@@ -1,0 +1,710 @@
+---
+title: "standard_box"
+author: "Siming Yan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+ 
+output:
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    # css: bootstrap.min.css
+    theme:
+      bslib: true
+      version: 4
+      bg: "#ff7f50"
+      fg: "#191960"
+      primary: "#ED79F9"
+      navbar-bg: "#3ADAC6"
+---
+
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+```
+
+```{r setup2, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+require(reshape2)
+# library(lubridate)
+# library(highcharter) # Interactive data visualizations
+library(viridis)
+# library(DT)
+library(lfe)
+# library(stargazer)
+library(lubridate)
+library(plotly)
+library(summarytools)
+library(kableExtra)
+library(highcharter)
+library(rticulate)
+
+kbt <- function(...){
+  knitr::kable(..., format.args = list(big.mark = ',', scientific = F)) %>%
+    kableExtra::kable_styling(c("striped", "condensed"),
+                               full_width = F,
+                               position = "center",
+                               row_label_position = "c") %>%
+   row_spec(0, bold = T)
+}
+
+stg <- function(...){
+  stargazer::stargazer(..., 
+          type = "text",
+          # style = "qje",
+          # title = "daily_kwh ~ post:encouraged|customer_id + no.bill|0|customer_id",
+          keep.stat = c("n", "ser"),
+          digits = 5)
+}
+```
+
+
+<!-- ```{r, include = F} -->
+<!-- d_mars_g = readxl::read_excel("./d_Mars.xlsx") -->
+<!-- df2 = readxl::read_excel("指标数据收集_Mars_Ford.xlsx") -->
+<!-- # head(d_mars_g) -->
+<!-- ``` -->
+```{r}
+getwd()
+# list.dirs('../nike')
+list.files()
+```
+```{python}
+import pandas as pd
+
+```
+
+```{r, include=FALSE}
+q11 = readxl::read_excel("Question 1.xlsx", sheet = 1 , skip = 1)
+q11_fixed_col = q11[,1:3]
+q11_fixed_col['Date'] = q11_fixed_col['Date'] %>% lapply(FUN = 'as.Date')
+q11_fixed_col2 = q11_fixed_col
+q11_fixed_col['Date'] %>% grep("[aZ]")
+# q11_fixed_col2['Date'] =q11_fixed_col['Date'] %>% sapply(years )
+# q11_fixed_col2['Date']
+# gsub("2017", "2016")
+ll = list()
+for (i in q11_fixed_col['Date']){
+   append(ll, i - years(1))
+}
+q11_fixed_col
+
+rbind(q11_fixed_col, q11_fixed_col2)
+q11_fixed_col['Date']
+
+q11[, 4:7]
+q11[, 8:11]
+
+ymd("2010/03/17") - years(2)
+
+['Date'] - years(1)
+# rbind(q11, q11)
+names(q11) = c("store_no", "store_type", "date", "traffic")
+# df3 %>% names()
+```
+
+```{r, include = F}
+# df_152 %>% dim
+# redefine outliers
+df_152_none_nil = {}
+
+for (i in 1:61){
+  if (df_152$in_1[i] + df_152$out[i] != 0){
+    df_152_none_nil = rbind(df_152_none_nil, df_152[i,])
+  }
+}
+ 
+df_152_none_nil$w_on_in_out =  df_152_none_nil$working_hours/
+  (df_152_none_nil$in_1+df_152_none_nil$out) 
+
+mean(df_152_none_nil$w_on_in_out)+sd(df_152_none_nil$w_on_in_out)
+
+df_152_w_on_in_out_1d = df_152_none_nil[df_152_none_nil$w_on_in_out < 214.765, ]
+# df_152_w_on_in_out_1d %>% dim
+mean(df_152_none_nil$w_on_in_out)+3*sd(df_152_none_nil$w_on_in_out)
+
+df_152_w_on_in_out_3d = df_152_none_nil[df_152_none_nil$w_on_in_out < 546.7836, ]
+df_152_w_on_in_out_3d %>% dim
+
+#------------------
+# df_044
+df_044_none_nil = {}
+for (i in 1:61){
+  if (df_044$in_1[i] + df_044$out[i] != 0){
+    df_044_none_nil = rbind(df_044_none_nil, df_044[i,])
+  }
+}
+ 
+df_044_none_nil$w_on_in_out =  df_044_none_nil$working_hours/
+  (df_044_none_nil$in_1+df_044_none_nil$out) 
+
+mean(df_044_none_nil$w_on_in_out)+sd(df_044_none_nil$w_on_in_out)  # 230.1864
+
+df_044_w_on_in_out_1d = df_044_none_nil[df_044_none_nil$w_on_in_out < 230.1864, ]
+df_044_w_on_in_out_1d %>% dim
+
+mean(df_044_none_nil$w_on_in_out)+2*sd(df_044_none_nil$w_on_in_out) 
+
+df_044_w_on_in_out_2d = df_044_none_nil[df_044_none_nil$w_on_in_out < 342.253, ]
+df_044_w_on_in_out_2d %>% dim
+
+```
+
+
+```{r, include = F}
+# 
+# range_2d = mean(df_152$working_hours) - 2*sd(df_152$working_hours)
+# range_1d = mean(df_152$working_hours) - sd(df_152$working_hours)
+# 
+# 
+# df_152_2d = df_152[df_152$working_hours > range_2d, ]
+# df_152_1d = df_152[df_152$working_hours > range_1d, ]
+# 
+# 
+# # max(df_152$working_hours )
+# dim(df_152_2d)
+#  
+# # eliminate nils. -10
+# df_152_2d_none_nil = {}
+# 
+# for (i in 1:58){
+#   if (df_152_2d$in_1[i] != 0 & df_152_2d$out[i] != 0){
+#     df_152_2d_none_nil = rbind(df_152_2d_none_nil, df_152_2d[i,])
+#   }
+# }
+# 
+# 
+# df_152_2d %>% dim()
+# # in_1 的 sd
+# plot(df_152_2d$in_1)
+# boxplot(df_152_2d$in_1, range = 6)
+# 
+# # ggplot(df_152_2d) + aes(y = in_1) + stat_boxplot(ymax = 118.5526, upper = 118.5)
+# 
+# mean(df_152_2d$in_1) + 2 * sd(df_152_2d$in_1) #118.5526
+# max(df_152_2d$in_1)
+# 
+# 
+# # out sd
+# plot(df_152_2d$out)
+# boxplot(df_152_2d$out)
+# mean(df_152_2d$out) + 2 * sd(df_152_2d$out) #52.3892
+# max(df_152_2d$out)
+# 
+# 
+# df_152_2d_none_nil = df_152_2d_none_nil[df_152_2d_none_nil$in_1 < 118.5526 & df_152_2d_none_nil$out < 52.3892, ]
+# 
+# df_152_2d_none_nil %>% dim # -5
+# 
+# which(!df_152_2d_none_nil$in_1 %in% df_152_2d$in_1)
+# which(!df_152_2d_none_nil$in_1 %in% df_152_1d$in_1)
+# df_152_2d_none_nil = df_152_2d_none_nil[-c(22,32),]
+
+``` 
+
+
+```{r, include=F}
+# baseline
+reg0 = lm(working_hours ~ in_1 + out -1, data = df_152) 
+# reg0 %>% summary # 0.5218
+# 1 sd 
+reg0_1d = lm(working_hours ~ in_1 + out -1, data = df_152_w_on_in_out_1d) 
+reg0_sqr = lm(working_hours ~ in_1 +I(in_1^2)+ out+ I(out^2)-1, data = df_152) 
+reg0_sqr %>% summary
+reg0_1d_sqr = lm(working_hours ~ in_1 +I(in_1^2)+ out+ I(out^2)-1, data = df_152_w_on_in_out_1d)
+reg0_1d_sqr %>% summary
+## ---------
+# cube
+reg0_cube = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ out+ I(out^2)+I(out^3)-1, data = df_152) 
+reg0_cube %>% summary
+reg0_1d_cube = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ out+ I(out^2)+I(out^3)-1, 
+                  data = df_152_w_on_in_out_1d) 
+reg0_1d_cube %>% summary
+# quartic
+reg0_quartic = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ I(in_1^4)+
+                       out+ I(out^2)+I(out^3)+ I(out^4)-1, 
+                  data = df_152) 
+reg0_quartic %>% summary
+reg0_1d_quartic = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ I(in_1^4)+
+                       out+ I(out^2)+I(out^3)+ I(out^4)-1, 
+                  data = df_152_w_on_in_out_1d) 
+reg0_1d_quartic %>% summary
+#--------------
+#--------------
+# baseline
+
+reg0_044 = lm(working_hours ~ in_1 + out -1, data = df_044) 
+# 1 sd 
+reg0_1d_044 = lm(working_hours ~ in_1 + out -1, data = df_044_w_on_in_out_2d) 
+reg0_sqr_044 = lm(working_hours ~ in_1 +I(in_1^2)+ out+ I(out^2)-1, data = df_044) 
+
+reg0_1d_sqr_044 = lm(working_hours ~ in_1 +I(in_1^2)+ out+ I(out^2)-1, data = df_044_w_on_in_out_2d)
+reg0_1d_sqr_044 %>% summary
+## ---------
+# cube
+reg0_cube_044 = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ out+ I(out^2)+I(out^3)-1, 
+               data = df_044) 
+reg0_1d_cube_044 = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ out+ I(out^2)+I(out^3)-1, 
+                  data = df_044_w_on_in_out_2d) 
+# quartic
+reg0_quartic_044 = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ I(in_1^4)+
+                       out+ I(out^2)+I(out^3)+ I(out^4)-1, 
+                  data = df_044) 
+reg0_1d_quartic_044 = lm(working_hours ~ in_1 +I(in_1^2)+I(in_1^3)+ I(in_1^4)+
+                       out+ I(out^2)+I(out^3)+ I(out^4)-1, 
+                  data = df_044_w_on_in_out_2d) 
+
+ 
+```
+
+
+
+```{r, include = F}
+reg_summary_data <- rbind(summary(reg0)$coefficients %>% data.frame(),
+                          summary(reg0_1d)$coefficients %>% data.frame(),
+                          # summary(reg0_2d)$coefficients %>% data.frame(),
+                          summary(reg0_sqr)$coefficients %>% data.frame(),
+                          summary(reg0_1d_sqr)$coefficients %>% data.frame(),
+                          # summary(reg0_2d_sqr)$coefficients %>% data.frame(),
+                          summary(reg0_cube)$coefficients %>% data.frame(),
+                          summary(reg0_1d_cube)$coefficients %>% data.frame())
+ 
+reg_summary_data$R_sqr = summary(reg0)$r.squared
+reg_summary_data$R_sqr[3:4] = summary(reg0_1d)$r.squared
+reg_summary_data$R_sqr[5:8] = summary(reg0_sqr)$r.squared
+reg_summary_data$R_sqr[9:12] = summary(reg0_1d_sqr)$r.squared
+reg_summary_data$R_sqr[13:18] = summary(reg0_cube)$r.squared
+reg_summary_data$R_sqr[19:24] = summary(reg0_1d_cube)$r.squared
+
+#----------
+
+reg_summary_data_044 <- rbind(summary(reg0_044)$coefficients %>% data.frame(),
+                          summary(reg0_1d_044)$coefficients %>% data.frame(),
+                          # summary(reg0_2d)$coefficients %>% data.frame(),
+                          summary(reg0_sqr_044)$coefficients %>% data.frame(),
+                          summary(reg0_1d_sqr_044)$coefficients %>% data.frame(),
+                          # summary(reg0_2d_sqr)$coefficients %>% data.frame(),
+                          summary(reg0_cube_044)$coefficients %>% data.frame(),
+                          summary(reg0_1d_cube_044)$coefficients %>% data.frame())
+ 
+reg_summary_data_044$R_sqr = summary(reg0_044)$r.squared
+reg_summary_data_044$R_sqr[3:4] = summary(reg0_1d_044)$r.squared
+reg_summary_data_044$R_sqr[5:8] = summary(reg0_sqr_044)$r.squared
+reg_summary_data_044$R_sqr[9:12] = summary(reg0_1d_sqr_044)$r.squared
+reg_summary_data_044$R_sqr[13:18] = summary(reg0_cube_044)$r.squared
+reg_summary_data_044$R_sqr[19:24] = summary(reg0_1d_cube_044)$r.squared
+
+```
+
+
+Overview of regressions
+=====================================     
+
+Column {data-width=1000 .no-padding}
+-------------------------------------
+
+```{r, echo = F}
+kbl(reg_summary_data, caption = "Models Rows") %>%
+  kable_paper("striped", full_width = F) %>%
+  pack_rows("reg0 BaseLine", 1, 2) %>%
+  pack_rows("reg0_2d, one standard diviation eliminated",3, 4) %>% 
+  pack_rows("reg0_sqr baseline and sqr terms",  5, 8) %>% 
+  pack_rows("reg0_2d_sqr, sqr terms & one sd eliminated", 9, 12) %>% 
+  pack_rows("reg0_cube, cube & sqr terms", 13, 18) %>% 
+  pack_rows("reg0_2d_cube, cube & sqr terms & one sd eliminated", 19, 24) 
+```
+
+
+### plot working_hours ~ inbound+outbound; **二次**项拟合, 移除 working_hours, inboud, outbound 高或者低于2 standard deviation 的值
+
+```{r, echo = F, message = F}
+
+axis_x <- seq(min(df_152_w_on_in_out_1d$in_1), max(df_152_w_on_in_out_1d$in_1), by = 5)
+axis_y <- seq(min(df_152_w_on_in_out_1d$out), max(df_152_w_on_in_out_1d$out), by = 5)
+# axis_x
+petal_lm_surface <- expand.grid(in_1 = axis_x, out = axis_y, KEEP.OUT.ATTRS = F)
+petal_lm_surface$Petal.Length <- predict.lm(reg0_1d_sqr, newdata = petal_lm_surface)
+petal_lm_surface <- acast(petal_lm_surface, out ~ in_1, value.var = "Petal.Length") 
+# y ~ x
+ 
+ 
+iris_plot <- plot_ly(df_152_w_on_in_out_1d, 
+                     x = ~in_1, 
+                     y = ~out, 
+                     z = ~working_hours,
+                     # text = ~Species, # EDIT: ~ added
+                     type = "scatter3d", 
+                     mode = "markers"
+                     # marker = list(color = hcolors)
+                     )
+# and then add the surface:
+
+iris_plot <- add_trace(p = iris_plot,
+                       z = petal_lm_surface,
+                       x = axis_x,
+                       y = axis_y,
+                       type = "surface")
+
+iris_plot
+
+```
+
+
+### plot working_hours ~ inbound+outbound-1; **四次**项拟合, 移除 working_hours, inboud, outbound 高或者低于2 standard deviation 的值
+
+
+```{r, echo = F, message = F}
+ 
+axis_x <- seq(min(df_152_w_on_in_out_1d$in_1) - 2, max(df_152_w_on_in_out_1d$in_1) + 3, by = 5)
+axis_y <- seq(min(df_152_w_on_in_out_1d$out) - 2, max(df_152_w_on_in_out_1d$out) + 3, by = 5)
+# axis_x
+petal_lm_surface <- expand.grid(in_1 = axis_x, out = axis_y, KEEP.OUT.ATTRS = F)
+petal_lm_surface$Petal.Length <- predict.lm(reg0_1d_quartic, newdata = petal_lm_surface)
+petal_lm_surface <- acast(petal_lm_surface, out ~ in_1, value.var = "Petal.Length") 
+# y ~ x
+ 
+iris_plot <- plot_ly(df_152_w_on_in_out_1d, 
+                     x = ~in_1, 
+                     y = ~out, 
+                     z = ~working_hours,
+                     type = "scatter3d", 
+                     mode = "markers"
+                     )
+# and then add the surface:
+
+iris_plot <- add_trace(p = iris_plot,
+                       z = petal_lm_surface,
+                       x = axis_x,
+                       y = axis_y,
+                       type = "surface")
+
+iris_plot
+
+```
+
+
+### summarised regression of 4 degree 
+
+```{r}
+stg(reg0_1d_quartic)
+```
+
+
+the r square value is `r summary(reg0_1d_quartic)$r.squared`
+
+
+CN-044 {data-width=20 .no-padding}
+-------------------------------------
+     
+
+CN-044 {data-width=1000 .no-padding}
+-------------------------------------
+
+```{r, echo = F}
+kbl(reg_summary_data_044, caption = "Models Rows") %>%
+  kable_paper("striped", full_width = F) %>%
+  pack_rows("reg0 BaseLine", 1, 2) %>%
+  pack_rows("reg0_2d, one standard diviation eliminated",3, 4) %>% 
+  pack_rows("reg0_sqr baseline and sqr terms",  5, 8) %>% 
+  pack_rows("reg0_2d_sqr, sqr terms & one sd eliminated", 9, 12) %>% 
+  pack_rows("reg0_cube, cube & sqr terms", 13, 18) %>% 
+  pack_rows("reg0_2d_cube, cube & sqr terms & one sd eliminated", 19, 24) 
+```
+
+
+### plot working_hours ~ inbound+outbound; **二次**项拟合, 移除 working_hours, inboud, outbound 高或者低于2 standard deviation 的值
+
+```{r, echo = F, message = F}
+
+axis_x <- seq(min(df_044_w_on_in_out_2d$in_1), max(df_044_w_on_in_out_2d$in_1), by = .75)
+axis_y <- seq(min(df_044_w_on_in_out_2d$out), max(df_044_w_on_in_out_2d$out), by = .75)
+# axis_x
+petal_lm_surface <- expand.grid(in_1 = axis_x, out = axis_y, KEEP.OUT.ATTRS = F)
+petal_lm_surface$Petal.Length <- predict.lm(reg0_1d_sqr_044, newdata = petal_lm_surface)
+petal_lm_surface <- acast(petal_lm_surface, out ~ in_1, value.var = "Petal.Length") 
+# y ~ x
+ 
+ 
+iris_plot <- plot_ly(df_044_w_on_in_out_2d, 
+                     x = ~in_1, 
+                     y = ~out, 
+                     z = ~working_hours,
+                     # text = ~Species, # EDIT: ~ added
+                     type = "scatter3d", 
+                     mode = "markers"
+                     # marker = list(color = hcolors)
+                     )
+# and then add the surface:
+
+iris_plot <- add_trace(p = iris_plot,
+                       z = petal_lm_surface,
+                       x = axis_x,
+                       y = axis_y,
+                       type = "surface")
+
+iris_plot
+
+```
+
+### plot working_hours ~ inbound+outbound-1; **4次**项拟合, 移除 working_hours, inboud, outbound 高或者低于2 standard deviation 的值
+
+```{r, echo = F, message = F}
+
+axis_x <- seq(min(df_044_w_on_in_out_2d$in_1)-2, max(df_044_w_on_in_out_2d$in_1) + 3, by = .5)
+axis_y <- seq(min(df_044_w_on_in_out_2d$out)-2, max(df_044_w_on_in_out_2d$out)+3, by = .5)
+# axis_x
+petal_lm_surface <- expand.grid(in_1 = axis_x, out = axis_y, KEEP.OUT.ATTRS = F)
+petal_lm_surface$Petal.Length <- predict.lm(reg0_1d_quartic_044, newdata = petal_lm_surface)
+petal_lm_surface <- acast(petal_lm_surface, out ~ in_1, value.var = "Petal.Length") 
+# y ~ x
+ 
+ 
+iris_plot <- plot_ly(df_044_w_on_in_out_2d, 
+                     x = ~in_1, 
+                     y = ~out, 
+                     z = ~working_hours,
+                     type = "scatter3d", 
+                     mode = "markers"
+                     )
+# and then add the surface:
+
+iris_plot <- add_trace(p = iris_plot,
+                       z = petal_lm_surface,
+                       x = axis_x,
+                       y = axis_y,
+                       type = "surface")
+
+iris_plot
+
+```
+
+
+### summarised regression of 4 degree on CN_044 site
+
+```{r}
+stg(reg0_1d_quartic_044)
+```
+
+
+the r square value is `r summary(reg0_1d_quartic_044)$r.squared`
+
+
+
+How do we eliminated outliers?
+=====================================     
+
+CN-044 {data-width=1000 .no-padding}
+-------------------------------------
+
+### points
+
+```{r,include =F}
+library("ggpubr")
+# df_152_none_nil
+nomal_plot = data.frame(df_152_none_nil$w_on_in_out)
+nomal_plot$index = 1:58
+names(nomal_plot)[1] = "value"
+nomal_plot$value = nomal_plot$value %>% round(2)
+# mean(nomal_plot$value) + 2*sd(nomal_plot$value)
+# which(nomal_plot$value > 360.5727)
+```
+
+
+```{r, echo = F}
+
+# plot1 = ggplot(nomal_plot) + aes(index, value) + geom_point() + 
+#   geom_line(aes(y = 973.8759), linetype = 3)+
+#   geom_line(aes(y = 550.0302), linetype = 5)
+# plot1
+# 
+
+# ggsave("./plot1_scatter.png", plot1, dpi =600, width = 12, height =8)
+
+# nomal_plot_2 = nomal_plot[nomal_plot$value < 360.5727,]
+# ggdensity(nomal_plot$value, 
+#           main = "Density plot",
+#           xlab = "values")
+# 
+# nomal_plot$ii = 1
+# ggplot(nomal_plot, aes(x = ii,y = value, color = value)) +
+#   geom_dotplot(position ="jitter", binaxis = "y", stackdir = "centerwhole", dotsize = .4) +
+#   stat_boxplot(aes(x = ii, y = value*1.5), geom ='errorbar', width = 0.1)+
+#   geom_boxplot(aes(x = ii), width = 0.15)  
+# 
+# #---------
+# ggdensity(nomal_plot_2$value, 
+#           main = "Density plot",
+#           xlab = "values")
+#  
+# 
+# nomal_plot_2$ii = 1
+# ggplot(nomal_plot_2, aes(x = ii,y = value, color = value)) +
+#   geom_dotplot(position ="jitter", binaxis = "y", stackdir = "centerwhole", dotsize = .4) +
+#   stat_boxplot(aes(x = ii, y = value*1.5), geom ='errorbar', width = 0.1)+
+#   geom_boxplot(aes(x = ii), width = 0.15)  
+```
+
+```{r, echo = F}
+# viridis::inferno(25)
+
+highchart() %>% 
+  hc_add_series(nomal_plot, hcaes(x=index,
+                      y=value,
+                      size = value),
+                type = "point",
+                showInLegend = F) %>% 
+  hc_colorAxis(
+    stops = 
+      color_stops(colors = 
+                    viridisLite::inferno(10, begin = .1)),
+    type = "logarithmic"
+    ) %>% 
+  hc_add_yAxis(title = "value",
+               allowDecimals = FALSE,
+               plotLines = c(
+               list(
+               list(
+                    color = "Red", 
+                    width = 2, 
+                    dashStyle = "Dash",
+                    value = 550.0302,
+                    label = 
+                      list(
+                      text = "1st standard deviation = 550.0302", 
+                                 style = list(color = 'black',
+                                              fontSize = 11))
+                    )
+               )
+               ,
+               list(
+               list(
+                    color = "pink", 
+                    width = 2, 
+                    dashStyle = "ShortDashDotDot",
+                    value = 973.8759,
+                    label = list(
+                      text = "2nd standard deviation = 973.8759", 
+                                 style = list(color = 'black',
+                                              fontSize = 11))
+                    )
+                    )
+
+               )  
+) %>% 
+  hc_add_theme(hc_theme_economist())
+
+```
+
+
+CN-044_2 {data-width=1000 .no-padding}
+-------------------------------------
+
+### areas
+ 
+```{r, include=F}
+
+# plot2 = ggplot(nomal_plot) + aes(value) + geom_density(size = 1) +
+#   geom_vline(xintercept = 550.0302, linetype =5) +
+#   geom_vline(xintercept = 973.8759, linetype =3)
+# # 
+# plot2
+# ggsave("./plot1_density.png", plot2, dpi =600, width = 12, height =8)
+
+
+
+```
+
+```{r, echo = F}
+nomal_plot = nomal_plot[order(nomal_plot$value),]
+
+# hchart(density(nomal_plot$value), 
+#        type = "area", 
+#        color = "#B71C1C", name = "Price")
+ 
+
+highchart() %>% 
+  hc_add_series(density(nomal_plot$value),
+                type = "area",
+                color = "#B71C1C") %>%  
+    hc_xAxis(title = 
+               list(text = "Suicides per 100K people"),
+             allowDecimals = FALSE,
+             plotLines = c(
+               list(
+               list(
+                    color = "Red", 
+                    width = 2, 
+                    dashStyle = "Dash",
+                    value = 550.0302,
+                    label = list(
+                      text = "1st standard deviation = 550.0302", 
+                                 style = list(color = 'black',
+                                              fontSize = 11))
+                    )
+                    ),
+               list(
+               list(
+                    color = "pink", 
+                    width = 2, 
+                    dashStyle = "ShortDashDotDot",
+                    value = 973.8759,
+                    label = list(
+                      text = "2nd standard deviation = 973.8759", 
+                                 style = list(color = 'black',
+                                              fontSize = 11))
+                    )
+                    )
+
+               )  
+             ) %>% 
+  hc_add_theme(hc_theme_economist())
+
+
+
+
+# highchart() %>% 
+#   hc_xAxis(nomal_plot$value) %>% 
+#   hc_add_series(data = nomal_plot$value)
+# high charter version
+# nomal_plot %>%
+#   count(value) %>%
+#   hchart('area', hcaes(x = "value", y = "n")) %>%
+#   hc_colors("#fb4901") %>%
+#   hc_add_theme(hc_theme_ffx()) %>%
+#   hc_title(text = "Distribution of application size (in MB)")
+# 
+# 
+# hcboxplot(x = data.clean$Size, var = data.clean$Type, outliers = TRUE, color = "#fb4901", fillColor = "lightblue") %>%
+#   hc_chart(type = "column") %>%
+#   hc_add_theme(hc_theme_ffx()) %>%
+#   hc_title(text = "Application size range (in MB) by Application Type")
+```
+
+### arima
+
+```{r, echo=F}
+library(forecast)
+nomal_plot = nomal_plot[order(nomal_plot$index),]
+airforecast <- forecast(auto.arima(nomal_plot$value), level = 95)
+
+hchart(airforecast) %>% hc_add_theme(hc_theme_alone())
+
+
+library(quantmod)
+
+# x <- getSymbols("GOOG", auto.assign = FALSE)
+# y <- getSymbols("AMZN", auto.assign = FALSE)
+# 
+# highchart(type = "stock") %>% 
+#    hc_add_series(x) %>% 
+#    hc_add_series(y, type = "ohlc")
+
+# vignette("highcharts-api")
+```
+

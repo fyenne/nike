@@ -1,0 +1,504 @@
+---
+title: "nike_report"
+author: "Siming Yan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+    # css: bootstrap.min.css
+    theme: yeti
+---
+
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+
+
+
+``` {js}
+// Inverse color of navigation bar.
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+```{r setup, include = FALSE}
+ 
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+```{r setup2, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(reshape2)
+library(lubridate)
+library(highcharter) # Interactive data visualizations
+library(viridis)
+library(DT)
+library(lfe)
+library(stargazer)
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(zoo)
+library(forecast)
+library(Hmisc) 
+library(xts)
+library(reticulate)
+library(plotly)
+reticulate::use_condaenv("siming")
+# vignette("highcharter")
+# vignette("highcharts-api")
+```
+
+
+```{r include=FALSE}
+# Create a custom theme for the plots. 
+custom_theme <- hc_theme(
+  colors = c('#5CACEE', '#ee9e5c','#eee75c', '#5ceee7'),
+  chart = list(
+         backgroundColor = '#FAFAFA', 
+         plotBorderColor = "black"),
+  xAxis = list(
+         gridLineColor = "E5E5E5", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#E5E5E5", 
+         minorGridLineColor = "#E5E5E5", 
+         tickColor = "#E5E5E5", 
+         title = list(style = list(color = "#333333"))), 
+  yAxis = list(
+         gridLineColor = "#E5E5E5", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#E5E5E5", 
+         minorGridLineColor = "#E5E5E5", 
+         tickColor = "#E5E5E5", 
+         tickWidth = 1, 
+         title = list(style = list(color = "#333333"))),   
+  title = list(style = list(color = '#333333', fontFamily = "Lato")),
+  subtitle = list(style = list(color = '#666666', fontFamily = "Lato")),
+  legend = list(
+         itemStyle = list(color = "#333333"), 
+         itemHoverStyle = list(color = "#FFF"), 
+         itemHiddenStyle = list(color = "#606063")), 
+  credits = list(style = list(color = "#666")),
+  itemHoverStyle = list(color = 'gray'))
+
+
+parent_cat1 = c("#6A040F","#9D0208","#E04A46","#DC2F02","#E85D04","#F48C06","#faa307","#f3e194")
+```
+
+```{r, include = F}
+q11 = readxl::read_excel("Question 1.xlsx", sheet = 1 , skip = 1)
+q11_fixed_col = q11[,1:3]
+q11_fixed_col['Date'] = q11_fixed_col['Date'] %>% lapply(FUN = 'as.Date')
+q11_fixed_col2 = q11_fixed_col
+q11_fixed_col2['minus1'] = years(1)
+q11_fixed_col2['Date'] = q11_fixed_col2['Date'] - q11_fixed_col2['minus1'] 
+q11_fixed_col2 = q11_fixed_col2 %>% subset(select  = -c(minus1))
+names(q11_fixed_col) = c('store_no','store_type','date')
+names(q11_fixed_col2)= c('store_no','store_type','date')
+df_q11 = rbind(q11_fixed_col, q11_fixed_col2) 
+q11_fixed_col = q11[, 4:7]
+q11_fixed_col2 = q11[, 8:11]
+names(q11_fixed_col) = c("traffic", "transaction", "sales_amt", "sold_unit") 
+names(q11_fixed_col2) = c("traffic", "transaction", "sales_amt", "sold_unit") 
+df_q112 = rbind(q11_fixed_col, q11_fixed_col2) 
+df11 =  cbind(df_q11 , df_q112)
+df11['sales_amt']
+df11['sales_amt'] = df11['sales_amt'] %>% sapply(as.numeric)
+df11 = df11 %>% drop_na()  
+df11['year'] = df11['date'] %>% sapply(str_sub,1,4)
+ 
+```
+
+
+<!-- ```{python} -->
+<!-- import pandas as pd  -->
+<!-- from datetime import datetime, timedelta -->
+<!-- pd.__name__ -->
+<!-- pd.DataFrame(r$q11) -->
+<!-- ``` -->
+
+
+Page 1 
+=======================================================================
+
+Row {data-heights=400 .no-padding}
+-------------------------------------
+
+```{r, echo = F} 
+df1117 = df11 %>% filter(date >= '2017-01-01')
+df1116 = df11 %>% filter(date >= '2017-01-01')
+# # df1117 %>% View()
+# (df1117 %>% 
+#           describe())$store_type
+
+# df1117 %>% info()
+# library(pastecs)df
+# df
+# summary_df <- stat.desc(mydata) 
+```
+
+```{r, echo = F}
+plt1 = df11 %>% 
+  group_by(store_type,date,year) %>% 
+  summarise(traffic = sum(traffic), transaction= sum(transaction), sales_amt = sum(sales_amt), sold_unit = sum(sold_unit))
+plt2 = df11 %>% group_by(date,year) %>% summarise(traffic = sum(traffic))
+# plt2
+```
+
+ 
+
+```{r, echo = F}
+
+highchart() %>% 
+    hc_add_series(plt2, 
+                  hcaes(x = as.character(date), 
+                        y = traffic,
+                        group = year, 
+                        color = year), type = "line") %>%  # # series.name and series.color 
+  hc_tooltip(crosshairs = TRUE, borderWidth = 1.5,pointFormat = 
+                paste(
+                  "storetype: <b>{series.name}<b> <br> traffic: <b>{point.y:.2f}<b>" 
+                 )) %>% 
+    hc_add_theme(custom_theme)
+
+
+# df11 %>% head()
+# paste0((plt1 %>% names())[4:7][1])
+```
+```{r}
+
+fig <- plot_ly()
+ 
+# plt1 %>% names()
+# key = "traffic"
+pp = plt1[plt1$year == '2016',] %>% select((plt1 %>% names())[4:7][1])
+names(pp) = c("store_type", 'date', 'value')
+fig %>% 
+      add_pie(data =  pp, 
+          labels = ~store_type, 
+          values = ~value,
+          hole = .4,
+          textinfo = 'label+percent',
+          textposition = 'inside',
+          # hoverinfo = 'text',
+          # text = ~paste0(bms_industry, sum_bill_amount),
+          # name =   ,
+          # domain = list(row = 0, column = i-1),
+          marker = list(colors = 
+                          inferno(8, begin  = .2, end = .8,
+                                  direction = -1),
+                      line = list(color = '#FFFFFF', width = 1)),
+        showlegend = T) %>% layout(title= paste0((plt1 %>% names())[4:7][1]))
+# (plt1 %>% names())[4:7][1]
+```
+
+
+
+```{r, echo = F}
+ 
+fig <- plot_ly()
+ 
+
+for (i in 1:4){
+ 
+    pp = plt1[plt1$year == '2016',] %>% select((plt1 %>% names())[4:7][i])
+    names(pp) = c("store_type", 'date', 'value')
+    fig = fig %>% 
+          add_pie(data =  pp, 
+              labels = ~store_type, 
+              values = ~value,
+              hole = .4,
+              textinfo = 'label+percent',
+              textposition = 'inside',
+              # hoverinfo = 'text',
+              # text = ~paste0(bms_industry, sum_bill_amount),
+              name = paste0("2016",(plt1 %>% names())[4:7][i]) ,
+              domain = list(row = 0, column = i-1),
+              marker = list(colors = 
+                              inferno(8, begin  = .2, end = .8,
+                                      direction = -1),
+                          line = list(color = '#FFFFFF', width = 1)),
+            showlegend = T) %>% layout(title= paste0((plt1 %>% names())[4:7][i]))
+    i = i+1
+   
+}
+
+for (i in 1:4){
+
+   
+    pp = plt1[plt1$year == '2017',] %>% select((plt1 %>% names())[4:7][i])
+    names(pp) = c("store_type", 'date', 'value')
+    fig = fig %>% 
+          add_pie(data =  pp, 
+              labels = ~store_type, 
+              values = ~value,
+              hole = .4,
+              textinfo = 'label+percent',
+              textposition = 'inside',
+              # hoverinfo = 'text',
+              # text = ~paste0(bms_industry, sum_bill_amount),
+              name =  paste0("2017",(plt1 %>% names())[4:7][i]) ,
+              domain = list(row = 1, column = i-1),
+              marker = list(colors = 
+                              inferno(8, begin  = .2, end = .8,
+                                      direction = -1),
+                          line = list(color = '#FFFFFF', width = 1)),
+            showlegend = T) %>% layout(title= paste0((plt1 %>% names())[4:7][i]))
+    i = i+1
+
+}
+
+  
+
+ 
+fig <- fig %>% layout(title = "16&17 key value comparison",
+                      showlegend = F,
+                      grid=list(rows=2, columns=4),
+                      xaxis = list(
+                        showgrid = FALSE, 
+                        zeroline = FALSE, 
+                        showticklabels = FALSE),
+                      yaxis = list(
+                        showgrid = FALSE, 
+                        zeroline = FALSE, 
+                        showticklabels = FALSE))
+
+fig
+```
+
+## comparing to 2016 (4 pie charts on the upper part), roughly speaking that `sport_performance` business has been replaced by flagship as largest business in 2017 (4 pie charts on the lower part) , in this dataset.
+
+
+Row {data-heights=200 .no-padding}
+-------------------------------------
+
+### 性别视力分布(左)
+
+```{r, echo = F}
+# plt1 = df %>% 
+#   group_by(性别) %>% 
+#   summarise(left = mean(左眼裸眼视力) %>% round(3),
+#             right = mean(右眼裸眼视力)%>% round(3))
+# plt1$性别 = as.character(plt1$性别)
+# plt1$cat = plt1$性别
+# highchart() %>% 
+#   hc_add_series(plt1, 
+#                   hcaes(x = 性别, 
+#                         y = left,
+#                         group = cat), 
+#                 type = "column",
+#                 color = c("#92BFD4", "#E4D8CF")) %>% 
+#   hc_tooltip(pointFormat =
+#                 paste(
+#                   "视力: <b>{point.left}</b>"
+#                  )
+#              ) %>%
+#   hc_xAxis(
+#     categories = list(plt1$性别),
+#              title = list(text = "性别")) %>% 
+#   hc_yAxis(type = 'linear',
+#              ceiling = 5.1,
+#              floor = 5,
+#              tooltipValueFormat = list(plt1$left),
+#              title = list(text = "平均视力"),
+#              startOnTick = T) %>% 
+#   hc_legend(enabled = F) %>%
+#   hc_title(text = "性别视力分布(左眼)") %>%
+#   hc_add_theme(custom_theme)
+```
+
+
+
+### 性别视力分布(右)
+
+```{r, echo = F}
+# plt1$性别
+# library(highcharter)
+# highchart() %>% 
+#     hc_add_series(plt1, 
+#                   hcaes(x = 性别, 
+#                         y = right,
+#                         group = cat), 
+#                   type = "column",
+#                   color = c("#92BFD4", "#E4D8CF")) %>% 
+#   hc_tooltip(pointFormat = 
+#                 paste(
+#                   "视力: <b>{point.right}</b>"
+#                  )
+#              ) %>% 
+#     hc_xAxis(
+#       categories = list(plt1$性别),
+#              title = list(text = "性别")) %>% 
+#     hc_yAxis(type = 'linear',
+#              ceiling = 5.1,
+#              floor = 5,
+#              tooltipValueFormat = list(plt1$left),
+#              title = list(text = "平均视力"),
+#              startOnTick = T) %>% 
+#     hc_legend(enabled = FALSE) %>% 
+#     hc_title(text = "性别视力分布(右眼)") 
+```
+Row {data-heights=400 .no-padding}
+-------------------------------------
+
+```{r, echo = F}
+ 
+# 
+# highchart() %>% 
+#     hc_add_series(plt_nianji_all, 
+#                   hcaes(x = 年级, 
+#                         y = value,
+#                         group = name,
+#                         color = name), type = "line") %>% 
+#     hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, pointFormat = 
+#                 paste(
+#                   "<b>{name}</b> 平均视力: <b>{point.value:.2f}<b>"
+#                  )
+#              ) %>% 
+#     hc_xAxis(categories = (plt_nianji_all$年级 %>% unique), 
+#              title = list(text ="时间"),
+#              plotLines = list(
+#              list(color = "black", width = 2, dashStyle = "Dash", 
+#                value = 6,
+#                label = list(text = "预测分界线", style = list(color = "black", fontSize = 16))))) %>% 
+#  
+#     hc_legend(enabled = FALSE) %>% 
+#     hc_title(text = "年级视力分布")  %>% 
+#     hc_legend(verticalAlign = 'top', enabled = TRUE) %>% 
+#     hc_add_theme(custom_theme)
+#  
+print(376)
+```
+
+
+Page 2
+=======================================================================
+
+ Column {.tabset .tabset-fade data-heights=700 .colored }
+-----------------------------------------------------------------------
+
+### 上网工具
+
+```{r, echo = F}
+print(389)
+```
+
+### 上网时间
+
+```{r, echo = F}
+print(396) 
+```
+ 
+### 近视情况概览
+
+```{r, echo=F}
+print(400)
+
+```
+ 
+Row {data-heights=500 .no-padding}
+-------------------------------------
+
+
+```{r, include = F}
+# 
+# df$yearmon %>% unique() %>% length
+# df$出生日期 %>% unique() %>% length
+# df$出生日期 = df$出生日期 %>% floor_date(unit = 'month')
+# plt2 = df %>% 
+#   group_by(出生日期) %>% 
+#   summarise(right = mean(右眼裸眼视力),
+#             left = mean(左眼裸眼视力))
+# plt2 = plt2 %>% pivot_longer(cols =c(right, left))
+# plt2$出生日期 = plt2$出生日期 %>% as.character()
+```
+
+```{r, echo = F} 
+# 
+# plt2$出生日期 = plt2$出生日期 %>% as.Date()
+# 
+# fit1 = lm(value~出生日期, plt2[plt2$name == 'right', ])
+# 
+# fit2 = lm(value~出生日期, plt2[plt2$name == 'left', ])
+#  
+# color = viridis(2)
+# 
+# library(plotly)
+#  
+# gplt = ggplot(plt2)+ aes(x = 出生日期,  
+#                   y = value, 
+#                   group =name,
+#                   color = name) + 
+#   geom_point() + 
+#   geom_smooth(aes(x = 出生日期,y = value, group =name), 
+#               se = T,
+#               method = 'lm',
+#               span = 0.25,
+#               level  = 0.55) + 
+#   labs(title="视力和出生日期的关系",
+#         x ="出生日期", y = "视力")
+#   
+# 
+# 
+# 
+# ggplotly(gplt)
+ 
+
+```
+
+ 
+### 视力年级分布
+
+```{r , echo =F} 
+
+
+# plt243493 = df %>% group_by(年级, sightlevel) %>% summarise(n())
+# names(plt243493)[3] = "num"
+# plt243493 %>%  hchart(
+#     "column", hcaes(x = 年级, y =num, group = c( sightlevel)),
+#     color = viridis(3)
+    # )
+```
+
+
+Row {data-height=400 .no-padding}
+-------------------------------------
+ 
+  
+### 近视情况详细
+ 
+```{r, echo = F}
+  
+
+# df$出生日期 = df$出生日期 %>% as.Date
+# plt2354 = df %>% group_by(出生日期, sightlevel) %>% summarise(n())
+# 
+# # plt2354
+# 
+#  
+# gplt = ggplot(plt2354)+ aes(x = 出生日期,  
+#                   y =  `n()`, 
+#                   group =sightlevel,
+#                   color = sightlevel) + 
+#   geom_point() + 
+#   geom_smooth(aes(x = 出生日期,y = `n()`, group =sightlevel), 
+#               se = T,
+#               method = 'lm',
+#               span = 0.25,
+#               level  = 0.55)
+# 
+# ggplotly(gplt)
+
+```
+   
+ 
+
+
+
+
