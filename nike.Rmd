@@ -555,10 +555,10 @@ Question 2 predictions
 ```{r}
 
 df2 = readxl::read_excel("Question 2.xlsx", sheet = 1)
-library(prophet)
-m <- prophet(holidays = holidays)
-m <- add_country_holidays(m, country_name = 'US')
-m <- fit.prophet(m, df)
+# library(prophet)
+# m <- prophet(holidays = holidays)
+# m <- add_country_holidays(m, country_name = 'US')
+# m <- fit.prophet(m, df)
 
 ```
 
