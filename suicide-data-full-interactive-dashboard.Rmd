@@ -277,7 +277,8 @@ hc_add_series(continent_sex_tibble, hcaes(x = continent, y = suicide_capita, gro
     hc_title(text = "Suicides by continent and <b>Gender</b>", style = (list(fontSize = '14px'))) %>% 
     hc_subtitle(text = "1985-2015") %>%
     hc_tooltip(borderWidth = 1.5, pointFormat = paste("Gender: <b> {point.sex} </b> <br> Suicides: <b>{point.y}</b>")) %>%
-    hc_xAxis(categories = c("Africa", "Asia", "Europe", "North <br> America", "Oceania", "South <br> America"), labels = list(style = list(fontSize = 8))) %>%
+    hc_xAxis(categories = c("Africa", "Asia", "Europe", "North <br> America", "Oceania", "South <br> America"), 
+             labels = list(style = list(fontSize = 8))) %>%
     hc_yAxis(labels = list(style = list(fontSize = 10)),
              title = list(text = "Suicides per 100K people",
              style = list(fontSize = 10)),
