@@ -1,0 +1,183 @@
+---
+title: "nike_report3"
+author: "Siming Yan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+    # css: bootstrap.min.css
+    theme: yeti
+---
+
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r setup2, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(reshape2)
+# library(lubridate)
+# library(highcharter) # Interactive data visualizations
+library(viridis)
+library(DT)
+library(lfe)
+library(stargazer) 
+library(stringr) 
+library(zoo)   
+library(plotly)
+# reticulate::use_condaenv("siming")
+# vignette("highcharter")
+# vignette("highcharts-api")
+```
+
+
+```{r, include=FALSE}
+# Create a custom theme for the plots. 
+kbt <- function(...){
+  knitr::kable(..., format.args = list(big.mark = ',', scientific = F)) %>%
+    kableExtra::kable_styling(c("striped", "condensed"),
+                               full_width = F,
+                               position = "center",
+                               row_label_position = "c") %>%
+   row_spec(0, bold = T)
+}
+
+stg <- function(...){
+  stargazer::stargazer(..., 
+          type = "text",
+          # style = "qje",
+          # title = "daily_kwh ~ post:encouraged|customer_id + no.bill|0|customer_id",
+          keep.stat = c("n", "ser"),
+          digits = 5)
+}
+
+parent_cat1 = c("#6A040F","#9D0208","#E04A46","#DC2F02","#E85D04","#F48C06","#faa307","#f3e194")
+```
+
+Question 3 causal inferences 
+=======================================================================
+
+
+Row {data-heights=700 data-width=125 .no-padding .colored}
+-------------------------------------
+ 
+### data walkthrough
+
+```{r, include = F}
+
+df31 = readxl::read_excel("Question3.xlsx", sheet = 1) 
+df32 = readxl::read_excel("Question3.xlsx", sheet = 2, skip = 3, col_names = F)
+```
+
+```{r, echo=F}
+cnt31 = apply(df31, 2, function(x) length(unique(x))) %>% data.frame()
+names(cnt31) = 'count_distinct'
+dropcol = rownames(cnt31)[which(cnt31$count_distinct == 1)]
+df31 = df31 %>% select(-dropcol)
+datatable(cnt31)
+```
+
+
+Row {data-heights=1000 data-width=1000 .no-padding .colored}
+-------------------------------------
+
+### correlation plot
+```{r, echo = F, warning=F, message=F, echo = F}
+# df31
+library(data.table)
+cor = df31[!df31 %>% names() %like% "COLOR"]
+cor = cor[,2:dim(cor)[2]] %>%cor()%>% data.frame()
+m = cor %>% as.matrix()
+x = cor %>% names() 
+# matrix(rnorm(9), nrow = 3, ncol = 3)
+fig <- plot_ly(x = x, y = x, 
+    z = m, type = "heatmap", colors= viridis::plasma(16,.1,.3)
+) %>% layout(title = "correlations")
+fig
+```
+
+
+Row {data-heights=700 data-width=625 .no-padding .colored}
+-------------------------------------
+
+### regressions
+
+```{r, warning = F, message = F, results='asis', echo=F}
+# df31 %>% group_by()
+# df31
+fixed_eff = df31[df31 %>% names() %like% "IF"] %>% names()
+fixed_eff = fixed_eff %>% append(c("COLOR_CD_1", "COLOR_CD_2", "COLOR_CD_3"))
+paras = df31[!df31 %>% names() %in% fixed_eff] %>% names()
+paras = paras[3:length(paras)]
+
+para_str = paste(paras, collapse="+")
+fe_str =  paste(fixed_eff, collapse="+") 
+fml1 = as.formula(paste("SALES_QTY~", para_str,
+                        "-1-SSNRK_1ST_SKU_LAUNCH-NUM_COLOR_DESC -LAST_SEASON_INDICATOR",
+                        "|", fe_str
+                        ))
+reg1 = felm(fml1, data = df31) 
+print(fml1)
+print(
+  "
+  "
+)
+stargazer(reg1, type = "html")
+```
+
+### memos
+
+this is a fixed effect model by using felm function from car package, the categorical variables are suppressed in fixed-effects, they are considered but not included in the output report, the formula has shown above, three parameters are eliminated due to vacancy in value caused by `Multicollinearity`.
+
+the significant variables including:
+
+`SEASON_SINCE_1ST_SKU_LAUNCH` which means Number of seasons since the SKU was launched, 10 more sales for an extra season. 
+
+
+`NUMSKU_SAME_STYLE_IN1SSN` Number of products with the same style, popular styles can be more welcomed in our market. `NUMSKU_SAME_PF_IN1SSN` (Number of products with the same power franchise) also statistically significant. however `NUMSKU_SAME_MODEL_IN1SSN` not significant, which implys model is not a key role in this dataset.
+
+
+`OMD_DAYS_SINCE_SEASON_BEGIN` Number of days since SKU launch in the season, has a negative value and statistically significant. which means in a season, the SKU can become more unpopular from day to day.
+
+
+
+Row {data-heights=700 data-width=625 .no-padding .colored}
+-------------------------------------
+
+### rough regression on categorical variables
+
+```{r, echo = F, warning = F, results='asis'}
+para_str
+df31[paras]
+library(lme4)
+fe_str
+fm2 = as.formula(paste("SALES_QTY~0+",fe_str))
+reg2 = felm(fm2, data = df31) 
+print(fm2)
+stargazer(reg2, type = "html")
+```
+
+
+
+### memos
+
+categorical variables only regression, the formula has shown above, parameters are eliminated due to vacancy in value caused by `Multicollinearity`.
+
+significant variables are:
+
+`IF_GENERAL_PRICE`
+`IF_TRIPLEWHITE`
+`IF_SEASONAL_SILO_SU`                                             
+`IF_NEW_SEASONAL`
+
+which indicates that: 
+basically customers are focusing on two things: the price and if the sku is new. there are two more colors go significant, but the potential color ~ price relation is not clear.
