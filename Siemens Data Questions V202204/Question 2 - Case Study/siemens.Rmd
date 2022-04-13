@@ -1,0 +1,510 @@
+---
+title: "Siemens_report"
+author: "Siming Yan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    highlight: tango
+    theme: cerulean
+    toc: yes
+    toc_float: yes
+---
+
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+
+
+
+``` {js, include = F}
+// Inverse color of navigation bar.
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+```{r setup, include = FALSE}
+ 
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+
+```
+
+```{r setup2, include=FALSE}
+# library(flexdashboard)
+library(tidyverse)
+library(reshape2)
+library(lubridate)
+library(highcharter) # Interactive data visualizations
+library(viridis)
+library(DT)
+library(lfe)
+library(stargazer)
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(zoo)
+library(forecast)
+library(Hmisc) 
+library(xts)
+library(reticulate)
+library(plotly)
+library(lme4)
+library(aod)
+# reticulate::use_condaenv("siming")
+# vignette("highcharter")
+# vignette("highcharts-api")
+```
+
+
+```{r, include=FALSE}
+# Create a custom theme for the plots. 
+custom_theme <- hc_theme(
+  colors = c('#5CACEE', '#ee9e5c','#eee75c', '#5ceee7'),
+  chart = list(
+         backgroundColor = '#FAFAFA', 
+         plotBorderColor = "black"),
+  xAxis = list(
+         gridLineColor = "E5E5E5", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#E5E5E5", 
+         minorGridLineColor = "#E5E5E5", 
+         tickColor = "#E5E5E5", 
+         title = list(style = list(color = "#333333"))), 
+  yAxis = list(
+         gridLineColor = "#E5E5E5", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#E5E5E5", 
+         minorGridLineColor = "#E5E5E5", 
+         tickColor = "#E5E5E5", 
+         tickWidth = 1, 
+         title = list(style = list(color = "#333333"))),   
+  title = list(style = list(color = '#333333', fontFamily = "Lato")),
+  subtitle = list(style = list(color = '#666666', fontFamily = "Lato")),
+  legend = list(
+         itemStyle = list(color = "#333333"), 
+         itemHoverStyle = list(color = "#FFF"), 
+         itemHiddenStyle = list(color = "#606063")), 
+  credits = list(style = list(color = "#666")),
+  itemHoverStyle = list(color = 'gray'))
+kbt <- function(...){
+  knitr::kable(..., format.args = list(big.mark = ',', scientific = F)) %>%
+    kableExtra::kable_styling(c("striped", "condensed"),
+                               full_width = F,
+                               position = "center",
+                               row_label_position = "c") %>%
+   row_spec(0, bold = T)
+}
+
+stg <- function(...){
+  stargazer::stargazer(..., 
+          type = "text",
+          # style = "qje",
+          # title = "daily_kwh ~ post:encouraged|customer_id + no.bill|0|customer_id",
+          keep.stat = c("n", "ser"),
+          digits = 5)
+}
+
+parent_cat1 = c("#6A040F","#9D0208","#E04A46","#DC2F02","#E85D04","#F48C06","#faa307","#f3e194")
+#
+```
+
+```{r, include = F, message=F, warning=F}
+ld = function(){
+    
+  df = read_csv("./data.csv")
+  names(df) = gsub(" ", '_',names(df) )
+  
+  df$Distributor_customer = df$Distributor_customer %>% as.factor()
+  levels(df$Distributor_customer) = c(0,1)
+  df$Other_products = df$Other_products %>% as.factor()
+  levels(df$Other_products) = c(0,1)
+  df$Industry = df$Industry %>% as.factor()
+  return(df)
+}
+
+df = ld()
+df %>% dim()
+```
+
+# What kinds of customer Siemens should target for product Y.
+
+
+## check out the distribution of the given dataset.
+
+```{r, echo = F} 
+
+nmlist = names(df)[2:dim(df)[2]]
+fig <- plot_ly()
+for (i in 1:4){
+    # name = nmlist[i]
+    pp = df %>% group_by(df[nmlist[i]]) %>% count()
+    fig = fig %>% 
+          add_pie(data =  pp, 
+              labels = pp[nmlist[i]], 
+              values = ~n,
+              hole = .4,
+              textinfo = 'label+percent',
+              textposition = 'inside',
+              # hoverinfo = 'text',
+              name = paste0((pp %>% names())[1]) ,
+              domain = list(row = 0, column = i-1),
+              marker = list(colors = 
+                              inferno(8, begin  = .2, end = .8,
+                                      direction = -1),
+                          line = list(color = '#FFFFFF', width = 1)),
+            showlegend = T) 
+      # add_annotations(text= paste0((pp %>% names())[1]))
+    i=1+i
+   
+}
+
+for (i in 5:8){
+    # name = nmlist[i]
+    pp = df %>% group_by(df[nmlist[i]]) %>% count()
+    fig = fig %>% 
+          add_pie(data =  pp, 
+              labels = pp[nmlist[i]], 
+              values = ~n,
+              hole = .4,
+              textinfo = 'label+percent',
+              textposition = 'inside',
+              # hoverinfo = 'text',
+              name = paste0((pp %>% names())[1]) ,
+              domain = list(row = 1, column = i-5),
+              marker = list(colors = 
+                              inferno(8, begin  = .2, end = .8,
+                                      direction = -1),
+                          line = list(color = '#FFFFFF', width = 1)),
+            showlegend = T) 
+      # add_annotations(text = paste0((pp %>% names())[1]))
+    i=1+i
+   
+}
+#  
+fig <- fig %>% layout(title = "features distribution",
+                      showlegend = F,
+                      grid=list(rows=2, columns=4),
+                      xaxis = list(
+                        showgrid = FALSE, 
+                        zeroline = FALSE, 
+                        showticklabels = FALSE),
+                      yaxis = list(
+                        showgrid = FALSE, 
+                        zeroline = FALSE, 
+                        showticklabels = FALSE))
+
+fig
+```
+
+
+
+## corr
+
+```{r, echo = F}
+
+cor_plt = function(df){
+  
+  df$Distributor_customer = df$Distributor_customer %>% as.numeric()
+  df$Other_products = df$Other_products %>% as.numeric()
+  df$Industry = df$Industry %>% as.numeric()
+  cor = df[2:dim(df)[2]] %>% cor() %>% data.frame()
+  m = cor %>% as.matrix()
+  x = cor %>% names() 
+  # matrix(rnorm(9), nrow = 3, ncol = 3)
+  fig <- plot_ly(x = x, y = x, 
+      z = m, type = "heatmap", colors= viridis::plasma(16,.1,.3)
+  ) %>% layout(title = "correlations")
+  
+  fig
+}
+
+# 
+
+cor_plt(df)
+```
+
+## model selection
+
+#### base line and ramsey reset test 
+
+```{r}
+# naive model
+m1 = lm( Purchase_frequency~
+         Distributor_customer+
+         Year_being_customer+
+         Other_products+
+         Satisfaction+
+         Awareness_of_competitor +
+         Competitor_shares + Industry, data = df)
+
+
+
+library(lmtest)
+resettest(m1, power=2:4, type="regressor")
+resettest(m1, power=2:4, type="fitted")
+```
+
+fail to reject the null hypothesis of None omitted variable error. hence need to power up parameters.
+
+```{r}
+# interactive model
+m2 = lm( Purchase_frequency~
+         Distributor_customer+
+         Other_products+
+         Year_being_customer*
+         Satisfaction+
+         Awareness_of_competitor*
+         Competitor_shares + Industry, data = df)
+# rank 1 best model.
+m3 = lm( Purchase_frequency~ 
+         Year_being_customer+ 
+         Satisfaction+
+         Awareness_of_competitor +
+         Competitor_shares , data = df)
+
+resettest(m3, power=2, type="fitted")
+# rank 2
+m4 = lm( Purchase_frequency~ 
+         Year_being_customer+
+         # I(Year_being_customer^2) +
+         # Satisfaction+
+         I(Satisfaction^2)+
+         Awareness_of_competitor +
+         # I(Awareness_of_competitor^2)+
+         # Competitor_shares
+         I(Competitor_shares^2)
+         , data = df)
+# BIC(m4)
+
+m5 = lmer(Purchase_frequency ~ 
+                    1 +
+                    (Year_being_customer+
+                       I(Satisfaction^2)+
+                       Awareness_of_competitor + 
+                       I(Competitor_shares^2)||
+                       Industry),
+                  data=df) 
+m6 = lmer(Purchase_frequency ~ 
+                    (Year_being_customer+
+                       I(Satisfaction^2)+
+                       Awareness_of_competitor +
+                       I(Competitor_shares^2) +
+                       Other_products:I(Satisfaction^2)||
+                       Industry),
+                  data=df)
+ 
+# 1 + age:Sex + (1|Subject)/
+AIC(m1,m2,m3,m4,m5,m6) %>% cbind(BIC(m1,m2,m3,m4,m5,m6) ) %>%
+  datatable()
+
+```
+
+## linear model with fixed effect and clustered error 
+
+```{r}
+df$Industry = factor(df$Industry) 
+reg1 = felm(
+  Purchase_frequency~
+         Distributor_customer+
+         Year_being_customer+
+         Other_products+
+         I(Satisfaction^2)+
+         Awareness_of_competitor +
+         I(Competitor_shares^2) 
+         # Other_products:Satisfaction + 
+         # Other_products:Satisfaction
+  |Industry|0|Industry, data = df)
+reg1 %>% stg()
+
+# stargazer(reg1, type = "html")
+```
+
+
+```{r, echo = F}
+#  
+# reg_plt = function(df_reg){
+#   df_reg$Satisfaction2 = df_reg$Satisfaction^2
+#   
+#   reg12 = lm(Purchase_frequency~
+#            # Distributor_customer+
+#            Year_being_customer+
+#            # Other_products+
+#              Satisfaction+
+#            I(Satisfaction)^2, df_reg)
+# 
+#   axis_x <- seq(min(df_reg$Year_being_customer), 
+#                 max(df_reg$Year_being_customer), by = 2)
+#   axis_y <- seq(min(df_reg$Satisfaction), 
+#                 max(df_reg$Satisfaction), by = 2)
+#   
+#   
+#   # axis_x
+#   petal_lm_surface <- expand.grid(
+#     Year_being_customer = axis_x, 
+#     Satisfaction = axis_y, 
+#     KEEP.OUT.ATTRS = F)
+#   
+#   petal_lm_surface$Petal.Length <- predict.lm(
+#     reg12, newdata = petal_lm_surface)
+#   
+#   petal_lm_surface <- acast(
+#     petal_lm_surface, 
+#     Satisfaction~Year_being_customer, value.var = "Petal.Length") 
+#   # y ~ x
+#   
+#    
+#   iris_plot <- plot_ly(df_reg, 
+#                        x = ~Year_being_customer, 
+#                        y = ~Satisfaction, 
+#                        z = ~Purchase_frequency,
+#                        # text = ~Species, # EDIT: ~ added
+#                        type = "scatter3d", 
+#                        mode = "markers",
+#                        color = 'Satisfaction2',
+#                        colors = cividis(1055, begin = .3, end = .9)
+#                        # marker = list(color = hcolors)
+#                        ) %>% 
+#     layout(showlegend = F) 
+#   
+#   iris_plot <- add_trace(p = iris_plot,
+#                          z = petal_lm_surface,
+#                          x = axis_x,
+#                          y = axis_y,
+#                          type = "surface")  %>% 
+#     layout(showlegend = F)
+#   return(iris_plot)
+# }
+# df
+
+plot_ly(data = df, 
+        x = ~Year_being_customer, 
+        y = ~Satisfaction, z = ~Purchase_frequency,
+        type = 'scatter3d', 
+        color = ~Satisfaction,
+        symbol = ~Distributor_customer,
+        colors = viridis(45,alpha = .6),
+        mode = 'markers',
+        marker = list(
+          size = ~Satisfaction^2, opacity = .7)) %>%
+  layout(showlegend = FALSE, 
+         title ="single bms_amount by fee type and customer code")
+
+# reg_plt(df)
+
+```
+
+
+## linear mixed effect model
+
+```{r, warning = F, message=F}
+
+mod <- lme4::lmer(Purchase_frequency ~ 1 + 
+                    (Year_being_customer+
+                       I(Satisfaction^2)+
+                       Awareness_of_competitor + 
+                       I(Competitor_shares^2)||Industry),
+                  data=df)
+# summary(mod) 
+# confint(mod)
+```
+
+
+```{r, warning = F, message=F, echo = F}
+# styleColorBar2 <- function (data, color1, color2) 
+#   {
+#     M <- max(abs(data), na.rm = TRUE)
+#     js <- c(
+#       "value <= 0 ? ",  
+#       sprintf("'linear-gradient(90deg, transparent ' + (1+value/%f) * 100 + '%%, %s ' + (1+value/%f) * 100 + '%%)'", 
+#               M, color1, M),
+#       " : ",
+#       sprintf("'linear-gradient(90deg, transparent ' + (1-value/%f) * 100 + '%%, %s ' + (1-value/%f) * 100 + '%%)'", 
+#               M, color2, M) 
+#     )
+#     JS(js)
+# }
+
+table_out1 = coef(mod)$Industry
+brks <- quantile(table_out1, 
+                 probs = seq(.05, .95, .05), na.rm = TRUE)
+clrs <- round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
+  {paste0("rgb(255,", ., ",", ., ")")}
+
+
+table_out1 %>% round(3) %>%  datatable(
+  options = list(
+  autoWidth = F,
+  columnDefs = list(list(width = '20px', targets = c(1, 3)))
+  )) %>% 
+  formatStyle(names(table_out1), 
+              backgroundColor = styleInterval(brks, clrs)) 
+```
+ 
+ 
+ 
+## auto ml
+
+
+```{r, include = F}
+library(h2o)
+df = ld()
+h2o.init()
+df = df %>% select(-Index)
+df = mutate(df, Purchase_frequency = ifelse(Purchase_frequency>0, 1, 0)) 
+df$Purchase_frequency = df$Purchase_frequency %>% as.factor()
+# set the predictor and response columns
+predictors <- names(df)[!names(df) %in% "Purchase_frequency"]
+response <- "Purchase_frequency" 
+df_splits <- h2o.splitFrame(data =  as.h2o(df), ratios = 0.8, seed = 1234)
+train <- df_splits[[1]]
+test <- df_splits[[2]]
+```
+
+
+```{r, include=F}
+# build a GLM model
+# prostate_glm <- h2o.glm(family = "binomial",
+#                         x = predictors,
+#                         y = response,
+#                         training_frame = train,
+#                         lambda = 0,
+#                         compute_p_values = TRUE)
+# 
+# # predict using the GLM model and the testing dataset
+# predict <- h2o.predict(object = prostate_glm, newdata = test)
+# perf = h2o.performance((prostate_glm))
+# test_df = test %>% as.data.frame()
+# h2o.varimp(prostate_glm)
+# 
+# h2o.precision(perf)
+# perf
+#  
+# cbind(test_df$Purchase_frequency, 
+#       (predict %>% as.data.frame())) 
+#  
+
+```
+
+```{r, echo=F, message = F, include=F}
+aml <- h2o.automl(x = predictors,
+                  y = response,
+                  training_frame = train,
+                  max_models = 5,
+                  seed = 529,
+                  verbosity = "warn")
+
+# View the AutoML Leaderboard
+lb <- aml@leaderboard
+# print(lb, n = nrow(lb))
+# lb
+
+```
+
+```{r, echo = F}
+
+h2o.explain(aml@leader, test)
+perf  = h2o.performance(aml@leader, test)
+perf
+
+```
+
