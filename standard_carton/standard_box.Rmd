@@ -38,12 +38,10 @@ library(viridis)
 # library(DT)
 library(lfe)
 # library(stargazer)
-library(lubridate)
 library(plotly)
 library(summarytools)
 library(kableExtra)
 library(highcharter)
-library(rticulate)
 
 kbt <- function(...){
   knitr::kable(..., format.args = list(big.mark = ',', scientific = F)) %>%
@@ -70,42 +68,23 @@ stg <- function(...){
 <!-- df2 = readxl::read_excel("指标数据收集_Mars_Ford.xlsx") -->
 <!-- # head(d_mars_g) -->
 <!-- ``` -->
-```{r}
-getwd()
-# list.dirs('../nike')
-list.files()
-```
-```{python}
-import pandas as pd
 
-```
 
 ```{r, include=FALSE}
-q11 = readxl::read_excel("Question 1.xlsx", sheet = 1 , skip = 1)
-q11_fixed_col = q11[,1:3]
-q11_fixed_col['Date'] = q11_fixed_col['Date'] %>% lapply(FUN = 'as.Date')
-q11_fixed_col2 = q11_fixed_col
-q11_fixed_col['Date'] %>% grep("[aZ]")
-# q11_fixed_col2['Date'] =q11_fixed_col['Date'] %>% sapply(years )
-# q11_fixed_col2['Date']
-# gsub("2017", "2016")
-ll = list()
-for (i in q11_fixed_col['Date']){
-   append(ll, i - years(1))
-}
-q11_fixed_col
+ 
+df3 = readxl::read_excel("./data_of_Mars_sample _copy.xlsx")
 
-rbind(q11_fixed_col, q11_fixed_col2)
-q11_fixed_col['Date']
 
-q11[, 4:7]
-q11[, 8:11]
+plot_ly(df3, x = ~`outbound_cbm(/m)`, y = ~`inbound_cbm(/m)`, z = ~ `working hours direct(FTE + OutSourcing)`, type = 'scatter3d', mode = 'markers')
 
-ymd("2010/03/17") - years(2)
-
-['Date'] - years(1)
-# rbind(q11, q11)
-names(q11) = c("store_no", "store_type", "date", "traffic")
+df3$Weekend_or_Holiday = as.factor(df3$Weekend_or_Holiday)
+names(df3)[4] = "working_hours"
+names(df3)[5] = "in_1"
+names(df3)[6] = "out"
+df3$`working hours direct(FTE + OutSourcing)`
+# names(df3)[8] = "in_1"
+df_152 = df3[df3$ou_code == "CN-152", ]
+df_044 = df3[df3$ou_code == "CN-044", ]
 # df3 %>% names()
 ```
 

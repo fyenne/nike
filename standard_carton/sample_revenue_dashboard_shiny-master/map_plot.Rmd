@@ -1,0 +1,27 @@
+---
+title: "map_plot"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+# library(DataExplorer)
+# ttx = readxl::read_excel("C:/Users/dscshap3808/Documents/data/TTX入湖表清单.xlsx", sheet = 5)
+# ttx$模块 %>% unique() %>% data.frame()
+# ttx %>% group_by(模块) %>% count()
+
+
+library(hchinamap)
+# dir <- tempdir()
+# download.file('https://czxb.github.io/br/chinadf.rda', file.path(dir, 'chinadf.rda'))
+# load(file.path(dir, 'chinadf.rda'), verbose = TRUE)
+Shanghai <- chinadf %>%
+  dplyr::filter(region == "Shanghai")
+ 
+hchinamap(name = Shanghai$name, value = Shanghai$value,
+          width = "100%", height = "500px",
+          title = "Map of Shanghai", region = "Shanghai")
+
+anhui
+```
+ 
