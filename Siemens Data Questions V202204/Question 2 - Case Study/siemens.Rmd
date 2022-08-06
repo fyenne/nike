@@ -33,20 +33,15 @@ knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
 # library(flexdashboard)
 library(tidyverse)
 library(reshape2)
-library(lubridate)
+# library(lubridate)
 library(highcharter) # Interactive data visualizations
 library(viridis)
 library(DT)
 library(lfe)
 library(stargazer)
 library(tidyverse)
-library(stringr)
-library(lubridate)
+library(stringr) 
 library(zoo)
-library(forecast)
-library(Hmisc) 
-library(xts)
-library(reticulate)
 library(plotly)
 library(lme4)
 library(aod)
@@ -312,7 +307,7 @@ reg1 = felm(
          Awareness_of_competitor +
          I(Competitor_shares^2) 
          # Other_products:Satisfaction + 
-         # Other_products:Satisfaction
+          # + Other_products:Satisfaction
   |Industry|0|Industry, data = df)
 reg1 %>% stg()
 
@@ -495,8 +490,8 @@ aml <- h2o.automl(x = predictors,
 
 # View the AutoML Leaderboard
 lb <- aml@leaderboard
-# print(lb, n = nrow(lb))
-# lb
+print(lb, n = nrow(lb))
+
 
 ```
 
