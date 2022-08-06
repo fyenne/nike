@@ -1,0 +1,589 @@
+---
+title: "scale_dashboard"
+author: "Siming Yan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+# output: 
+#   flexdashboard::flex_dashboard:
+#     vertical_layout: fill
+#     theme: vapor
+# runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    vertical_layout: fill
+    # css: bootstrap.min.css
+    theme:
+      bslib: true
+      version: 4
+      bg: "#ff7f50"
+      fg: "#191960"
+      primary: "#ED79F9"
+      navbar-bg: "#3ADAC6"
+
+runtime: shiny
+---
+
+```{r setup, include = FALSE}
+# real time theme adjustment;
+# 
+# , context = "server" on top
+# bslib::bs_themer()
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# light & dark theme activator
+# 
+# light <- bs_theme()
+# dark <- bs_theme(bg = "black", fg = "white", primary = "purple")
+# ui <- fluidPage(
+#   theme = light, 
+#   checkboxInput("dark_mode", "Dark mode")
+# )
+# server <- function(input, output, session) {
+#   observe(session$setCurrentTheme(
+#     if (isTRUE(input$dark_mode)) dark else light
+#   ))
+# }
+# shinyApp(ui, server)
+```
+
+```{r setup2, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+require(reshape2)
+require(PerformanceAnalytics)
+# library(p8105.datasets)
+# require(rCharts)
+library(shiny)
+library(shinydashboard)
+library(shinydashboardPlus)
+library(bs4Dash)
+
+library(lubridate)
+ 
+library(highcharter) # Interactive data visualizations
+library(plotly) # Interactive data visualizations
+library(viridis)
+
+# Create a custom theme for the plots. 
+custom_theme <- hc_theme(
+  colors = c('#5CACEE', 'green', 'red'),
+  chart = list(
+         backgroundColor = '#FAFAFA', 
+         plotBorderColor = "black"),
+  xAxis = list(
+         gridLineColor = "E5E5E5", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#E5E5E5", 
+         minorGridLineColor = "#E5E5E5", 
+         tickColor = "#E5E5E5", 
+         title = list(style = list(color = "#333333"))), 
+  yAxis = list(
+         gridLineColor = "#E5E5E5", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#E5E5E5", 
+         minorGridLineColor = "#E5E5E5", 
+         tickColor = "#E5E5E5", 
+         tickWidth = 1, 
+         title = list(style = list(color = "#333333"))),   
+  title = list(style = list(color = '#333333', fontFamily = "Lato")),
+  subtitle = list(style = list(color = '#666666', fontFamily = "Lato")),
+  legend = list(
+         itemStyle = list(color = "#333333"), 
+         itemHoverStyle = list(color = "#FFF"), 
+         itemHiddenStyle = list(color = "#606063")), 
+  credits = list(style = list(color = "#666")),
+  itemHoverStyle = list(color = 'gray'))
+```
+
+
+
+
+``` {js, include =F}
+// Inverse color of navigation bar.
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+
+
+```{r, include=F}
+full_scale = read.csv("./full_scale_table_525.csv", encoding = 'UTF-8')
+
+full_scale$yearmon =  ymd(paste0(full_scale$year,
+                                 "0",
+                                 full_scale$month,full_scale$date))
+full_scale$yearmon = ymd(full_scale$yearmonth)
+names(full_scale)[1] = "title"
+
+full_scale_2 = read.csv("./full_scale_table_modify.csv", encoding = "UTF-8")
+full_scale_2 = full_scale_2[,!names(full_scale_2) %in% 
+                              c("X.U.FEFF.index", "is_connected", "apply")]
+
+add_cols = full_scale_2[, c("title", names(full_scale_2)[!names(full_scale_2) %in% names(full_scale)])]
+
+add_cols = distinct(add_cols)
+add_cols %>% names()
+# [1] "title"       "table_type"  "in_bms"     
+# [4] "Granularity"
+
+
+# full_scale$title[!full_scale$title %in% add_cols$title] %>% unique()
+# -----------
+full_scale = distinct(full_scale)
+# full_scale %>% group_by(title) %>% summarise(n())
+
+
+full_scale_full = merge(full_scale, add_cols, by = "title", all = T)
+
+full_scale_full[full_scale_full$title == "receipt_detail", ]$table_type = "Transaction"
+full_scale_full[full_scale_full$title == "receipt_detail", ]$in_bms = 1
+full_scale_full[full_scale_full$title == "receipt_detail", ]$Granularity = "order"
+
+
+
+# write.csv(full_scale_full, "./full_scale_full.csv", row.names = F)
+```
+ 
+```{r, include=F}
+plt1_data = data.frame(full_scale_full %>% group_by(yearmon) %>% count())
+plt1_data$percent = (plt1_data$n/sum(plt1_data$n)) %>% round(2)
+plt1_data$yearmon = as.character(plt1_data$yearmon)
+# plt1_data$percent %>% round(2)
+```
+
+Overview of data from scale sys.BDP
+=====================================     
+
+<!-- Inputs {.sidebar} -->
+<!-- ------------------------------------- -->
+
+<!-- ```{r, echo = F } -->
+
+<!-- selectInput("asd", label = "year_mon :", -->
+<!--             choices = full_scale$yearmon, -->
+<!--             selected = c(full_scale$yearmon %>% as.list()), -->
+<!--             multiple = T) -->
+
+<!-- ``` -->
+
+
+Column {data-width=500 .no-padding}
+-------------------------------------
+
+### Renew by date(last renew time)
+
+```{r, echo = F}
+# plt1_data
+# plt1_plt = ggplot(plt1_data)+
+#   aes(x = yearmon, weight = n, fill = yearmon)+
+#   geom_bar() + 
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+#   geom_text(aes(label = percent, y = n), 
+#             data = plt1_data, 
+#             size = 2.5,
+#             angle = 45)
+# 
+# ggplotly(plt1_plt)
+# mean(plt1_data$n)
+highchart() %>% 
+    hc_add_series(plt1_data, hcaes(x = yearmon, y = n, color = yearmon), type = "bar") %>%
+    hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Year: <b>{point.x}</b> <br> data_count: <b>{point.y}</b>")) %>%
+    hc_title(text = "Scale data_count by year") %>% 
+    # hc_subtitle(text = "1985-2015") %>%
+    hc_xAxis(categories =plt1_data$yearmon, title = list(text = "Year")) %>%
+    hc_yAxis(title = list(text = "Scale data_count"),
+             allowDecimals = FALSE,
+             plotLines = list(list(
+                    color = "black", width = 1, dashStyle = "Dash", 
+                    value = mean(plt1_data$n),
+                    label = list(text = "Mean = 353.4", 
+                                 style = list(color = "black",
+                                              fontSize = 11))))) %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+```
+
+ 
+
+<!-- ### Chart B -->
+
+```{r, echo = F}
+# library(XML)
+# library(leafletCN)
+# # 读取网页的表格
+# # Sorry for 爬了你家网站
+# table = readHTMLTable("http://www.pm25.in/rank",
+#                       encoding = "UTF-8", stringsAsFactors = F)[[1]]
+# 
+# # 整理数据并命名
+# 
+# dat = table[ , 2:3]
+# names(dat) = c("city","AQI")
+# dat$AQI = as.numeric(dat$AQI)
+# 
+# # 调用geojsonMap进行绘制
+# geojsonMap(dat, "city",
+#            popup =  paste0(dat$city, ":", dat$AQI),
+#            palette = "Reds", legendTitle = "AQI")
+ 
+# renderPlotly({
+#   managers.melt[managers.melt$manager == input$asd, ] %>% 
+#     # filter(manager == input$asd) %>%
+#     plot_ly(x = ~ date,y = ~val, 
+#             group_by = ~manager, 
+#             color = ~manager
+#             ) %>% 
+#     add_lines() %>% 
+#     layout(showlegend = F)
+#            
+# })
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+<!-- ### Chart C  -->
+
+<!--  {.tabset .tabset-fade} -->
+
+```{r, echo = F}
+# full_scale_full
+
+plt2_data = data.frame(full_scale_full$table_type %>% table)
+plt2_d2 = data.frame(full_scale_full$Granularity %>% table)
+plt2_d3 = data.frame(full_scale_full$module %>% table)
+plt2_d4 = data.frame(full_scale_full$conn_type %>% table)
+```
+ 
+
+<!-- ```{r, echo = F} -->
+<!-- # plt2_data -->
+<!-- plt2 <- plot_ly(plt2_data,  -->
+<!--                 labels = ~.,  -->
+<!--                 values = ~Freq,  -->
+<!--                 type = 'pie', -->
+<!--                 domain = list(row = 0, column = 0), -->
+<!--                 title = 'table_data_type') -->
+
+<!-- plt2 <- plt2 %>% add_pie(data = plt2_d2, -->
+<!--                          labels = ~., -->
+<!--                          values = ~Freq, -->
+<!--                          marker = list(colors = c("DECF75","A5E33B", -->
+<!--                                                   "50385E")), -->
+<!--                          domain = list(row = 0, column = 1), -->
+<!--                          title = 'Granularity') -->
+
+<!-- plt2 <- plt2 %>% add_pie(data = plt2_d3, -->
+<!--                          labels = ~., -->
+<!--                          values = ~Freq, -->
+<!--                          marker = list(colors = c("592640","C34838", -->
+<!--                                                   "EFB067","C4CAA8", -->
+<!--                                                   "709B82")), -->
+<!--                          domain = list(row = 1, column = 0), -->
+<!--                          title = 'module_type') -->
+
+<!-- plt2 <- plt2 %>% add_pie(data = plt2_d4, -->
+<!--                          labels = ~., -->
+<!--                          values = ~Freq, -->
+<!--                          domain = list(row = 1, column = 1), -->
+<!--                          # color = ~Freq, -->
+<!--                          # colors= c("#4FD6B6", "#E5E9BC"), -->
+<!--                          marker = list(colors = c("4FD6B6","E5E9BC")), -->
+<!--                          title = 'conn_type') -->
+
+
+<!-- plt2 <- plt2 %>% layout(title = 'pies', -->
+<!--                         grid=list(rows=2, columns=2), -->
+<!--                         showlegend = F, -->
+<!--                         xaxis = list(showgrid = FALSE,  -->
+<!--                                      zeroline = FALSE,  -->
+<!--                                      showticklabels = FALSE), -->
+<!--                         yaxis = list(showgrid = FALSE,  -->
+<!--                                      zeroline = FALSE,  -->
+<!--                                      showticklabels = FALSE)) -->
+
+<!-- plt2 -->
+<!-- ``` -->
+
+
+### Chart table_data_type 
+
+```{r, echo = F}
+highchart() %>%
+    hc_add_series(plt2_data, hcaes(x = ., y = Freq, color = .), type = "pie") %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+
+```
+
+### Chart Granularity
+
+```{r, echo = F}
+highchart() %>%
+    hc_add_series(plt2_d2, hcaes(x = ., y = Freq, color = .), type = "pie") %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Chart module_type
+
+```{r, echo = F}
+highchart() %>%
+    hc_add_series(plt2_d3, hcaes(x = ., y = Freq, color = .), type = "pie") %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+```
+
+### Chart conn_type
+
+```{r, echo = F}
+highchart() %>%
+    hc_add_series(plt2_d4, hcaes(x = ., y = Freq, color = .), type = "pie") %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+  
+  
+  # labels = ~., value = ~Freq, 
+  #               type = 'pie',
+  #               domain = list(row = 0, column = 0),
+```
+
+
+summary by time (page 2)
+=====================================     
+
+```{r, echo = F, message = F, warning=F}
+# install.packages("wordcloud")
+library(wordcloud)
+# install.packages("RColorBrewer")
+library(RColorBrewer)
+# install.packages("wordcloud2")
+library(wordcloud2)
+plt_3_data = data.frame(full_scale_full %>% group_by(yearmon) %>% count(full_scale_full$column_names))
+plt_3_data_lacked = plt_3_data[plt_3_data['n'] > 1 , ]
+
+```
+
+Column {.tabset .tabset-fade data-width=1200 .colored }
+-----------------------------------------------------------------------
+
+### line chart
+ 
+```{r echo = F,message = F, warning=F}
+overall_tibble = full_scale_full %>% group_by(yearmon) %>% summarise(n())
+overall_tibble$yearmon <- as.character(overall_tibble$yearmon) 
+
+
+highchart() %>% 
+    hc_add_series(overall_tibble, hcaes(x = yearmon, y = `n()`, color =  `n()`), type = "line") %>%
+    hc_tooltip(crosshairs = TRUE, 
+               borderWidth = 1.5, 
+               headerFormat = "", 
+               pointFormat = paste("Yearmon: <b>{chr.x}</b> <br> Count: <b>{point.y}</b>")) %>%
+    hc_title(text = "Data Count") %>% 
+    # hc_subtitle(text = "1985-2015") %>%
+    hc_xAxis(title = list(text = "Year&month")) %>%
+    hc_yAxis(title = list(text = "Count"),
+             allowDecimals = FALSE,
+             plotLines = list(list(
+                    color = "black", width = 1, dashStyle = "Dash", 
+                    value = mean(overall_tibble$`n()`),
+                    label = list(text = "Mean Line", 
+                                 style = list(color = "black",
+                                              fontSize = 11))))) %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+
+```
+
+
+### distribution plot 2020-06-09
+
+```{r, echo = F}
+pie_sex = (full_scale_full %>% 
+  filter(yearmon == "2020-06-09"))[,"module"] %>% table() %>% data.frame()
+names(pie_sex) = c("X", "Y")
+
+highchart() %>% 
+  hc_add_series(pie_sex, hcaes(x = X, y = Y, 
+                               color = X), type = "pie") %>%
+  hc_tooltip(borderWidth = 1.5, headerFormat = "", pointFormat = paste("Gender: <b>{point.X} ({point.percentage:.1f}%)</b> <br> Count: <b>{point.Y}</b>")) %>%
+  hc_title(text = "<b>module distribution in 2020-06-09</b>", style = (list(fontSize = '14px'))) %>% 
+  # hc_subtitle(text = "1985-2015", style = (list(fontSize = '10px'))) %>%
+  hc_plotOptions(pie = list(dataLabels = list(distance = 5, 
+                            style = list(fontSize = 15)), 
+                            size = 330)) %>% 
+  hc_add_theme(custom_theme)
+```
+
+### distribution plot 2021-05-24
+
+
+```{r, echo = F}
+ 
+pie_sex2 = (full_scale_full %>% 
+  filter(yearmon == "2021-05-24"))[,"module"] %>% table() %>% data.frame()
+names(pie_sex2) = c("X", "Y")
+
+
+highchart() %>% 
+  hc_add_series(pie_sex2, hcaes(x = X, y = Y, 
+                               color = X), type = "pie") %>%
+  hc_tooltip(borderWidth = 1.5, headerFormat = "", pointFormat = paste("module: <b>{point.X} ({point.percentage:.1f}%)</b> <br> Count: <b>{point.Y}</b>")) %>%
+  hc_title(text = "<b>module distribution in 2021-05-24</b>", style = (list(fontSize = '14px'))) %>% 
+  # hc_subtitle(text = "1985-2015", style = (list(fontSize = '10px'))) %>%
+  hc_plotOptions(pie = list(dataLabels = list(distance = 5, 
+                            style = list(fontSize = 10)), 
+                            size = 330)) %>% 
+  hc_add_theme(custom_theme)
+```
+
+Column {.tabset .tabset-fade data-width=500 .colored }
+-----------------------------------------------------------------------
+
+### word cloud 2020-06-09 {.no-padding}
+
+```{r, echo = F, warning = F,message = F}
+# plt_3_data$yearmon %>% unique()
+# full_scale_full$yearmon %>% unique
+wordcloud(words = (plt_3_data %>% subset(plt_3_data$yearmon == "2020-06-09"))$full_scale_full.column_names, freq = plt_3_data$n, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
+```
+
+### word cloud 2020-07-20 {.no-padding}
+
+```{r, echo = F, message=F, warning = F}
+wordcloud(words = (plt_3_data %>% subset(plt_3_data$yearmon == "2020-07-20"))$full_scale_full.column_names, 
+          freq = plt_3_data$n, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
+
+```
+
+
+Column {.tabset .tabset-fade data-width=500 .colored }
+-----------------------------------------------------------------------
+
+
+### word cloud 2021-05-22 {.no-padding}
+
+```{r, echo = F, warning = F}
+wordcloud(words = (plt_3_data %>% subset(plt_3_data$yearmon == "2021-05-22"))$full_scale_full.column_names, 
+          freq = plt_3_data$n, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
+
+```
+
+
+### word cloud 2021-05-23 {.no-padding}
+
+
+```{r, echo = F, warning = F, message = F}
+wordcloud(words = (plt_3_data %>% subset(plt_3_data$yearmon == "2021-05-23"))$full_scale_full.column_names, 
+          freq = plt_3_data$n, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
+```
+
+
+### word cloud 2021-05-24 {.no-padding}
+
+```{r, echo = F, warning = F, message = F}
+wordcloud(words = (plt_3_data %>% subset(plt_3_data$yearmon == "2021-05-24"))$full_scale_full.column_names, 
+          freq = plt_3_data$n, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
+```
+
+Detailed data
+=======================================================================
+
+
+Column {.tabset .tabset-fade data-width=2000 .colored }
+-----------------------------------------------------------------------
+
+### Table 1 "2020-07-20" {.no-padding}
+
+```{r, echo =F}
+library(DT)
+DT::datatable((full_scale_full %>% subset(yearmon == "2020-07-20"))[,2:15],
+  rownames = FALSE, options = list(pageLength = 100)
+)
+```
+
+### Table 2 "2021-05-18" {.no-padding}
+
+```{r, echo =F}
+
+DT::datatable((full_scale_full %>% subset(yearmon == "2021-05-18"))[,2:15],
+  rownames = FALSE, options = list(pageLength = 100)
+)
+
+```
+
+
+
+
+
+Data Full View 
+=====================================
+
+
+Column {data-width = 2000}
+-----------------------------------------------------------------------
+
+### Chart E
+
+```{r, echo = F}
+# renderTable({full_scale_full})
+DT::datatable(full_scale_full[, 2:23],
+  rownames = FALSE, options = list(pageLength = 100)
+)
+```
+
+
+notes:
+=====================================
+
+> *the data was scrapped from scale repository, BDP, 5-25-2021, 15:21*
+
+***This dashboard is for overall review on SCALE repository in BDP.***
+
+* $1_{st}$ page: 
+
+**left-side figure**: 当下已更新的数据table以及最近的更新的.
+
+**right-side figure**: 
+
+
+| table_data_type | granularity| module_type| conn_type|
+|----------------|------------|----------------- | ------------------- |
+| 主数据：交易数据| 颗粒度: 订单;物料;仓库 |所属的业务模块：入库;出库;仓库管理;物料主数据;其他数据 | 连接方式：全量;增量 |
+| master_data : transaction data | order: item: inventory | inbound: outbound: item_master: inventory: main_data   | all: increased      |
+
+
+* $2_{nd}$ page: 
+
+各时间段的col_name length。对不同更新时间字段的分析。简单结论：2020年的两个表格主要集中在主数据，仓库信息方面；2021的表格集中在交易数据，更新频率至少有三种不同，2天1天&less time。词云大小与出现频率正相关。
+
+* $3_{rd}$ page: 
+
+两个特殊表的细节。最早的vs最近的
+
+
+
+* $4_{th}$ page: 
+
+全表预览
+https://docs.qq.com/mind/DZWNwZnJpY2ZaWnVG
+
+<!-- ![](https://raw.githubusercontent.com/sf-dsc-di/siming_yan/main/data/image.png)https://docs.qq.com/mind/DZWNwZnJpY2ZaWnVG -->
+
+
+
+<!-- ```{r} -->
+<!-- # full_scale_full$module %>% unique() -->
+<!-- ``` -->
+

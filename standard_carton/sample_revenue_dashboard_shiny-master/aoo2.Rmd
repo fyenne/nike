@@ -1,0 +1,442 @@
+---
+title: "app2"
+author: "Siming Yan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  flexdashboard::flex_dashboard:
+    # orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(flexdashboard)
+```
+ 
+
+```{r ,include = F}
+library(tidyverse)
+library(plotly)
+require(reshape2)
+require(PerformanceAnalytics)
+# library(p8105.datasets)
+require(rCharts)
+library(shiny)
+library(shinydashboard)
+library(shinydashboardPlus)
+library(bs4Dash)
+```
+
+
+
+```{r, include=F}
+nyc_airbnb = read.csv("./nyc_airbnb.csv")
+str(nyc_airbnb)
+nyc_airbnb = data.frame(lapply(nyc_airbnb,as.numeric))
+# data(nyc_airbnb)
+nyc_airbnb = 
+  nyc_airbnb %>% 
+  mutate(rating = review_scores_location / 2) %>%
+  select(
+    neighbourhood_group, neighbourhood, rating, price, room_type, lat, long) %>%
+  filter(
+    !is.na(rating), 
+    neighbourhood_group == "Manhattan",
+    room_type == "Entire home/apt",
+    price %in% 100:500)
+
+data(managers)
+managers <- na.omit(managers)
+managers.melt <- melt(
+  data.frame( index( managers ), coredata(cumprod( managers+1 )*100 ) ),
+  id.vars = 1
+)
+colnames(managers.melt) <- c("date", "manager","val")
+managers.melt[,"date"] <- format(managers.melt[,"date"],format = "%Y-%m-%d")
+```
+ 
+```{r, include=F}
+ 
+# scatter_ggplot = 
+#   nyc_airbnb %>%
+#   ggplot(aes(x = lat, y = long, color = price)) +
+#   geom_point(alpha = 0.25) +
+#   coord_cartesian()
+# 
+# ggplotly(scatter_ggplot)
+# 
+# box_ggplot = 
+#   nyc_airbnb %>% 
+#   mutate(neighbourhood = fct_reorder(neighbourhood, price)) %>% 
+#   ggplot(aes(x = neighbourhood, y = price, fill = neighbourhood)) +
+#   geom_boxplot() +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+# 
+# ggplotly(box_ggplot)
+```
+
+Page 1
+=====================================     
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r, echo = F }
+manager_names = data.frame(names_ = managers.melt$manager %>% unique)
+manager_names = manager_names$names_ %>% paste0()
+
+selectInput("asd", label = "Name of Manager :",
+            choices = manager_names,
+            selected = c(manager_names %>% as.list()),
+            multiple = T)
+# manager_names
+# sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+#             min = 0.1, max = 1, value = .1, step = 0.2)
+
+# manager_names
+```
+
+
+Column {data-width=600, data-height = 500}
+-------------------------------------
+
+### Chart A
+
+```{r, echo = F}
+# nyc_airbnb %>%
+#   mutate(text_label = str_c("Price: $", price, "\nRating: ", rating)) %>% 
+#   plot_ly(
+#     x = ~lat, y = ~long, type = "scatter", mode = "markers",
+#     color = ~price, text = ~text_label, alpha = 0.5)
+
+#--------------------------------------------
+# #rcharts
+# data(economics, package = 'ggplot2')
+# econ <- transform(economics, date = as.character(date))
+# m1 <- mPlot(x = 'date', y = c('psavert', 'uempmed'), type = 'Line',
+#   data = econ)
+# m1$set(pointSize = 0, lineWidth = 1)
+# m1
+
+#--------------------------------------------
+renderPlotly({
+  managers.melt[managers.melt$manager == input$asd, ] %>% 
+    # filter(manager == input$asd) %>%
+    plot_ly(x = ~ date,
+            z = ~ val, 
+            y = ~ manager, 
+            color  = ~ manager,
+            colors = 'Paired'
+            ) %>% 
+    add_markers(
+      # symbol = 'circle', sizemode = 'diameter'
+      ) %>% 
+    add_lines(alpha = .6) %>% 
+    layout(scene = list(xaxis = list(title = 'date'),
+                        yaxis = list(title = 'manager'),
+                        zaxis = list(title = 'val')),
+           paper_bgcolor = 'rgb(243, 243, 243)', 
+           plot_bgcolor = 'rgb(243, 243, 243)') 
+
+})
+```
+
+
+```{r, echo = F }
+
+  # hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+  #      xlab = "Duration (minutes)", main = "Geyser Eruption Duration")
+  # 
+  # dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  # lines(dens, col = "blue")
+# manager_names[1]
+# managers.melt
+# plt_data = reactive({filter(managers.melt, 
+#                             managers.melt$manager == c(input$asd))
+# })
+
+# managers.melt = reactive({})
+# plt.data <- reactive({
+#     subset(managers.melt(), manager %in% input$asd)
+# })
+
+
+  
+
+# managers.melt %>% filter(manager == "HAM1")
+# fig <- plot_ly(alpha = 0.6, nbinsx = 30)
+# fig <- fig %>% add_histogram(a, name = "first")
+# fig <- fig %>% add_histogram(b, name = "second")
+# fig <- fig %>% layout(barmode = "overlay", 
+#                       yaxis = list(title = "Frequency"),
+#                       xaxis = list(title = "Values"))
+# 
+# # Print your histogram 
+# fig
+
+```
+
+### Chart B
+
+```{r, echo = F}
+# library(XML)
+# library(leafletCN)
+# # 读取网页的表格
+# # Sorry for 爬了你家网站
+# table = readHTMLTable("http://www.pm25.in/rank",
+#                       encoding = "UTF-8", stringsAsFactors = F)[[1]]
+# 
+# # 整理数据并命名
+# 
+# dat = table[ , 2:3]
+# names(dat) = c("city","AQI")
+# dat$AQI = as.numeric(dat$AQI)
+# 
+# # 调用geojsonMap进行绘制
+# geojsonMap(dat, "city",
+#            popup =  paste0(dat$city, ":", dat$AQI),
+#            palette = "Reds", legendTitle = "AQI")
+ 
+renderPlotly({
+  managers.melt[managers.melt$manager == input$asd, ] %>% 
+    # filter(manager == input$asd) %>%
+    plot_ly(x = ~ date,y = ~val, 
+            group_by = ~manager, 
+            color = ~manager
+            ) %>% 
+    add_lines() %>% 
+    layout(showlegend = F)
+           
+})
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+
+
+<!-- ```{r} -->
+<!-- ### Chart C  -->
+<!-- # # 右上角 -->
+<!-- # saved for map -->
+<!-- # library(nycmaps) -->
+<!-- # library(maps) -->
+<!-- # plot_nyc()  -->
+
+<!-- ``` -->
+
+### Chart D 
+
+<!--  {.tabset .tabset-fade} -->
+
+```{r, echo = F}
+# renderPlotly({
+#   # plotc = reactive({managers.melt[managers.melt$manager == input$asd, ] %>%
+#   #   group_by(manager) %>%
+#   #   count()
+#   # })
+#   (ggplot(managers.melt[managers.melt$manager == input$asd, ] %>%
+#     group_by(manager) %>%
+#       summarise(mean(val), sum(val))) +
+#      aes(x = manager, y = `mean(val)`, color = manager, fill = manager) +
+#      geom_col()) %>%
+#     ggplotly()
+#     # plot_ly(x = plotc$n,
+#     #         color = plotc$manager,
+#     #     type = "histogram")
+# })
+#--------------------------------------------
+# 实验
+# ggplot(managers.melt %>%
+#     group_by(manager) %>%
+#       summarise(mean(val), sum(val))) +
+#      aes(x = manager, y = `mean(val)`,
+#          ymin = 0,
+#          ymax = `sum(val)`,
+#          color = manager, fill = manager) +
+#      geom_col()
+#--------------------------------------------
+
+
+nyc_airbnb %>%
+  count(neighbourhood) %>%
+  mutate(neighbourhood = fct_reorder(neighbourhood, n)) %>%
+  plot_ly(x = ~neighbourhood, y = ~n, color = ~neighbourhood, type = "bar", colors = "viridis") %>% layout(showlegend = F)
+
+# plot_ly(type='scattergeo',
+#         lon =c( 42, 39 ),
+#         lat =c( 12, 22 ),
+#         text =c( 'Rome' , 'Greece' ),mode = 'markers')
+
+#--------------------------------------------
+# 实验
+# plot3 = data.frame(filter(managers.melt, manager == "HAM1") %>% group_by(manager) %>% count())
+# plot3
+# plot_ly(x = plot3$n, 
+#         type = "histogram")
+# 
+# 
+# (ggplot(plot3) + aes(y = n) + geom_histogram()) %>% ggplotly()
+
+ 
+
+# nyc_airbnb %>%
+#   mutate(text_label = str_c("Price: $", price, "\nRating: ", rating)) %>%
+#   plot_ly(
+#     x = ~lat, y = ~long, type = "scatter", mode = "markers",
+#     color = ~price, text = ~text_label, alpha = 0.5)
+
+
+
+```
+
+```{r, echo = F}
+# require(rCharts)
+# data(economics, package = 'ggplot2')
+# econ <- transform(economics, date = as.character(date))
+# 
+# 
+# renderChart2({
+# 
+# }) 
+# renderPlotly({
+#   # plotc = reactive({managers.melt[managers.melt$manager == input$asd, ] %>% 
+#   #   group_by(manager) %>% 
+#   #   count()
+#   # })  
+#   (ggplot(managers.melt[managers.melt$manager == input$asd, ] %>% 
+#     group_by(manager) %>% 
+#       summarise(mean(val), sum(val))) + 
+#      aes(x = manager, y = `mean(val)`, color = manager, fill = manager) + 
+#      geom_col()) %>% 
+#     ggplotly()
+#     # plot_ly(x = plotc$n, 
+#     #         color = plotc$manager,
+#     #     type = "histogram")
+# })    
+#--------------------------------------------
+#rcharts
+
+        # m1 <- mPlot(x = 'date', y = c('psavert', 'uempmed'), type = 'Line',
+        #             data = econ)
+        # m1$set(pointSize = 0, lineWidth = 1)
+        # m1$addParams(dom = 'myChart')
+        # m1
+```
+
+### Chart E
+
+```{r, echo = F}
+# wi = map_data("county", "New york")
+# mid_range = function(x) mean(range(x, na.rm = TRUE))
+# centres = ddply(wi, .(subregion),
+#                 colwise(mid_range, .(lat,long)))
+# map_nys= ggplot(wi, aes(long, lat)) +
+#   geom_polygon(aes(group =group),
+#                fill =NA, colour = "grey50") +
+#   geom_text(aes(label = subregion), data = centres,
+#             size = 2, angle =45)
+# ggplotly(map_nys)
+
+# devtools::install_github("zachcp/nycmaps")
+
+
+nyc_airbnb %>%
+  mutate(neighbourhood = fct_reorder(neighbourhood, price)) %>%
+  plot_ly(y = ~price, 
+          color = ~neighbourhood,
+          type = "box", 
+          colors = "viridis") %>% layout(showlegend = F)
+```
+
+
+Page 2 
+=====================================     
+
+Column {data-height=800}
+-----------------------------------------------------------------------
+### Chart F 
+
+```{r, echo = F, warning=F, message=F}
+# library(RColorBrewer)
+# nyc_airbnb %>%
+#   count(neighbourhood) %>%
+#   mutate(neighbourhood = fct_reorder(neighbourhood, n)) %>%
+#   plot_ly(x = ~neighbourhood, y = ~n, color = ~neighbourhood, type = "bar", colors = "viridis")
+
+# 
+barroud = data.frame(neighbourhood = nyc_airbnb %>% group_by(neighbourhood) %>%
+    summarise(mean(price)) %>%
+    data.frame())
+# 
+names(barroud) = c("loc", "mean_price")
+
+ax <- list(
+  title = "",
+  zeroline = FALSE,
+  showline = FALSE,
+  showticklabels = FALSE,
+  showgrid = FALSE
+)
+fig <- plot_ly(
+  data = barroud,
+  type = 'barpolar',
+  r = barroud$mean_price,
+  theta = barroud$loc,
+  color = barroud$mean_price
+  # colors = #colorRampPalette(brewer.pal(8, "Greens")(32)),
+  # brewer.pal(32,"Greens"),
+  # opacity = barroud$mean_price
+  # mode = 'markers'
+
+)
+# # fig <- fig %>% add_trace(marker="line"
+# #  
+# # )
+fig <- fig %>% layout(xaxis = ax, yaxis = ax)
+fig
+
+# barroud$mean_price
+
+# coord_polar(theta = "x", start = 0, direction = 1, clip = "on")
+
+
+# fig = px.bar_polar(df, r="frequency", theta="direction", color="strength",
+#                    color_discrete_sequence= px.colors.sequential.Plasma_r,
+#                    title="Part of a continuous color scale used as a discrete sequence"
+#                   )
+# 
+# g <- list(
+#   scope = 'usa',
+#   showframe = F,
+#   showland = T,
+#   landcolor = toRGB("grey90")
+# )
+# plot_ly(nyc_airbnb, 
+#         type='choropleth', 
+#         # scope = 'usa',
+#         locations="NY", z=nyc_airbnb$price,colorscale="Blues") %>% 
+#   layout(g)
+```
+
+```{r}
+# 
+# county = read.csv("./counties_usa.csv")
+# county = county[,1:3] %>% filter(STNAME == "New York")
+
+# 
+# https://www.r-graph-gallery.com/183-choropleth-map-with-leaflet.html
+
+
+# Download the shapefile. (note that I store it in a folder called DATA. You have to change that if needed.)
+# download.file("http://thematicmapping.org/downloads/TM_WORLD_BORDERS_SIMPL-0.3.zip" , destfile="DATA/world_shape_file.zip")
+ 
+```
+
+
+```{r}
+
+```
+ 
+
